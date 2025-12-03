@@ -46,7 +46,7 @@ API_PROVIDERS: Dict[str, APIProviderConfig] = {
         base_url="https://api.deepseek.com/v1",
         default_model="deepseek-chat",
         api_key_name="API Key",
-        models=["deepseek-chat", "deepseek-reasoner"],
+        models=["deepseek-chat", "deepseek-reasoner"],  # deepseek-chat 推荐用于对话
         website="https://platform.deepseek.com/"
     ),
     "openai": APIProviderConfig(
@@ -411,7 +411,7 @@ class UnifiedAPIClient:
                         {"role": "system", "content": "你是一位友善的访谈员，擅长通过追问引导对方分享更多细节和感受。只输出追问内容，不要有任何前缀。"},
                         {"role": "user", "content": prompt.strip()}
                     ],
-                    max_tokens=100,
+                    max_tokens=150,
                     temperature=0.8,
                     n=1
                 )
@@ -419,15 +419,47 @@ class UnifiedAPIClient:
                 duration = time.time() - start_time
                 
                 if response and response.choices:
-                    follow_question = response.choices[0].message.content.strip()
+                    choice = response.choices[0]
                     
-                    # 清理可能的前缀
-                    prefixes_to_remove = ["追问：", "追问:", "问：", "问:"]
+                    # DeepSeek R1 (reasoner) 模型的输出在 message.content 中
+                    # 但有时需要检查 reasoning_content（思考过程）和 content（最终答案）
+                    follow_question = ""
+                    
+                    if hasattr(choice, 'message') and choice.message:
+                        # 优先使用 content（最终答案）
+                        if hasattr(choice.message, 'content') and choice.message.content:
+                            follow_question = choice.message.content.strip()
+                        
+                        # 如果 content 为空，检查是否有 reasoning_content（DeepSeek R1）
+                        if not follow_question and hasattr(choice.message, 'reasoning_content'):
+                            reasoning = choice.message.reasoning_content
+                            if reasoning:
+                                # 从推理内容中提取最后的结论
+                                lines = reasoning.strip().split('\n')
+                                # 取最后几行非空内容作为追问
+                                for line in reversed(lines):
+                                    line = line.strip()
+                                    if line and len(line) >= 5 and not line.startswith(('<', '【', '```')):
+                                        follow_question = line
+                                        break
+                    
+                    if not follow_question:
+                        logger.log_api_call("generate_followup", True, duration, "API返回内容为空")
+                        return None
+                    
+                    # 清理可能的前缀和格式
+                    prefixes_to_remove = ["追问：", "追问:", "问：", "问:", "**追问**：", "**追问**:"]
                     for prefix in prefixes_to_remove:
                         if follow_question.startswith(prefix):
                             follow_question = follow_question[len(prefix):].strip()
                     
-                    # 校验追问质量（移除字数限制）
+                    # 移除可能的引号包裹
+                    if follow_question.startswith('"') and follow_question.endswith('"'):
+                        follow_question = follow_question[1:-1].strip()
+                    if follow_question.startswith('"') and follow_question.endswith('"'):
+                        follow_question = follow_question[1:-1].strip()
+                    
+                    # 校验追问质量
                     preset_follows = topic.get("followups", [])
                     original_question = topic.get("questions", [""])[0]
                     
@@ -436,9 +468,13 @@ class UnifiedAPIClient:
                             and follow_question not in original_question
                             and follow_question not in preset_follows):
                         logger.log_api_call("generate_followup", True, duration)
+                        logger.debug(f"AI生成追问成功: {follow_question}")
                         return follow_question
+                    
+                    logger.log_api_call("generate_followup", True, duration, f"生成内容不符合要求: {follow_question[:50]}")
+                    return None
                 
-                logger.log_api_call("generate_followup", True, duration, "生成内容不符合要求")
+                logger.log_api_call("generate_followup", True, duration, "API响应无choices")
                 return None
                 
             except Exception as e:

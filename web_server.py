@@ -49,9 +49,11 @@ class WebInterviewHandler:
         
         # 构建欢迎消息
         welcome = (
-            "🎓 欢迎参加大学生五育并举访谈！\n\n"
-            "本次访谈将随机抽取6题，涵盖学校、家庭、社区三场景及德、智、体、美、劳五育。\n"
-            "请认真回答每个问题，系统会根据你的回答进行智能追问。"
+            "👋 你好，欢迎参加本次访谈！\n\n"
+            "接下来我会向你提出 6 个问题，话题涉及你在学校、家庭和社区中的经历与感受。\n\n"
+            "💬 请放松心情，用自己的话分享真实想法，没有标准答案。\n"
+            "⏭️ 如果某个问题不方便回答，可以点击「跳过」按钮。\n\n"
+            "准备好了吗？让我们开始吧！"
         )
         
         history = [
@@ -209,29 +211,31 @@ def create_web_interface():
         handler_state = gr.State(None)
         
         gr.Markdown(f"# 🎓 {WEB_CONFIG.title}")
-        gr.Markdown("基于百度千帆大模型的智能访谈系统，支持多人同时访谈")
+        gr.Markdown("探索德、智、体、美、劳五育发展，记录你的成长故事")
         
         with gr.Row():
             with gr.Column():
                 # 聊天区域
                 chatbot = gr.Chatbot(
                     label="访谈对话",
-                    height=500,
-                    show_label=False
+                    height=480,
+                    show_label=False,
+                    bubble_full_width=False
                 )
                 
                 with gr.Row():
                     msg = gr.Textbox(
                         label="你的回答",
-                        placeholder="在这里输入回答，按回车发送...",
-                        scale=4,
-                        show_label=False
+                        placeholder="请在此输入你的回答，按回车或点击发送...",
+                        scale=5,
+                        show_label=False,
+                        lines=2
                     )
-                    submit_btn = gr.Button("发送", variant="primary", scale=1)
-                    skip_btn = gr.Button("⏭️ 跳过", variant="secondary", scale=1)
                 
                 with gr.Row():
-                    refresh_btn = gr.Button("🔄 开始新访谈", variant="secondary")
+                    submit_btn = gr.Button("📤 发送", variant="primary", scale=2)
+                    skip_btn = gr.Button("⏭️ 跳过此题", variant="secondary", scale=1)
+                    refresh_btn = gr.Button("🔄 重新开始", variant="secondary", scale=1)
         
         # 事件处理函数
         def init_handler():

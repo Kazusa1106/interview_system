@@ -25,10 +25,10 @@ import logger
 from config import ensure_dirs
 from api_client import (
     initialize_api, is_api_available, get_api_client,
-    get_available_providers, get_current_provider_name, API_PROVIDERS
+    get_available_providers
 )
 from session_manager import get_session_manager
-from interview_engine import create_interview, InterviewEngine
+from interview_engine import create_interview
 from web_server import start_web_server, check_gradio_available
 
 
@@ -147,18 +147,27 @@ def run_cli_mode():
     """
     运行命令行交互模式
     """
-    print("\n核心规则：每次随机6题，覆盖学校/家庭/社区三场景 + 德/智/体/美/劳五育")
-    print("支持指令：输入 '结束' 终止访谈，输入 '导出' 保存日志，输入 '跳过' 跳过当前题")
+    print("\n" + "─" * 50)
+    print("📋 操作提示")
+    print("─" * 50)
+    print("  · 输入 '跳过' - 跳过当前问题")
+    print("  · 输入 '导出' - 保存访谈记录")
+    print("  · 输入 '结束' - 结束本次访谈")
+    print("─" * 50)
     
     # 获取用户名
-    user_name = input("\n请简单自我介绍（或直接回车跳过）：").strip() or None
+    user_name = input("\n请输入你的称呼（直接回车跳过）：").strip() or None
     
     # 创建访谈
     session, engine = create_interview(user_name)
     
-    print("\n欢迎进入大学生五育并举主题访谈！")
-    print("本次访谈将随机抽取6题，涵盖学校、家庭、社区三场景及德、智、体、美、劳五育。")
-    print(f"\n已为你生成6个访谈问题，现在开始吧～\n")
+    print("\n" + "═" * 50)
+    print("👋 你好，欢迎参加本次访谈！")
+    print("═" * 50)
+    print("\n接下来我会向你提出 6 个问题，")
+    print("话题涉及你在学校、家庭和社区中的经历与感受。")
+    print("\n💬 请放松心情，用自己的话分享真实想法。")
+    print("\n准备好了吗？让我们开始吧！\n")
     
     # 显示第一个问题
     print(engine.get_current_question())
@@ -183,7 +192,7 @@ def run_cli_mode():
         
         if cmd in ("跳过", "不想说", "不愿意", "/跳过"):
             idx = session.current_question_idx
-            print(f"理解，跳过第{idx + 1}题，进入下一题～")
+            print(f"\n⏭️ 好的，已跳过第 {idx + 1} 题")
             result = engine.skip_question()
             
             if not result.is_finished:
@@ -198,9 +207,8 @@ def run_cli_mode():
         result = engine.process_answer(answer)
         
         if result.need_followup:
-            prefix = "💡 百度千帆智能追问：" if result.is_ai_generated else "追问："
-            print(f"\n{prefix}")
-            print(result.followup_question)
+            prefix = "💡 " if result.is_ai_generated else "📝 "
+            print(f"\n{prefix}{result.followup_question}")
             
             # 等待追问回答
             followup_answer = input("\n你的补充回答：").strip()
@@ -208,33 +216,43 @@ def run_cli_mode():
                 result = engine.process_answer(followup_answer)
         
         if result.is_finished:
-            print("\n6个问题已全部问完，访谈结束！")
+            pass  # 结束统计会在循环外处理
         elif result.next_question:
             print(f"\n{result.next_question}")
     
     # 访谈结束统计
-    print("\n访谈结束！本次访谈统计：")
+    print("\n" + "═" * 50)
+    print("🎉 访谈结束！感谢你的参与！")
+    print("═" * 50)
+    
     summary = engine.get_summary()
     stats = summary.get("statistics", {})
     
-    print(f"- 总题数：{stats.get('total_logs', 0)}（含核心问题+追问）")
-    print(f"- 场景分布：{stats.get('scene_distribution', {})}")
-    print(f"- 五育分布：{stats.get('edu_distribution', {})}")
-    print(f"- 追问类型分布：{stats.get('followup_distribution', {})}")
-    print(f"- 智能追问功能：{'✅ 已启用 (' + get_current_provider_name() + ')' if is_api_available() else '❌ 未启用'}")
+    print("\n📊 本次访谈统计：")
+    print("─" * 30)
+    print(f"  📝 回答记录：{stats.get('total_logs', 0)} 条")
     
-    # 导出选项
-    while True:
-        choice = input("\n是否导出完整访谈日志？输入 'JSON' 导出，输入 '结束' 退出：").strip().lower()
-        if choice == "json":
-            path = get_session_manager().export_session(session.session_id)
-            if path:
-                print(f"日志已导出至：{path}")
-        elif choice in ("结束", "exit", "quit"):
-            print("感谢参与访谈，祝你学习进步！再见～")
-            break
-        else:
-            print("无效输入，请输入 'JSON' 或 '结束'。")
+    scene_dist = stats.get('scene_distribution', {})
+    if scene_dist:
+        scenes = '、'.join([f"{k}({v})" for k, v in scene_dist.items()])
+        print(f"  🏠 场景覆盖：{scenes}")
+    
+    edu_dist = stats.get('edu_distribution', {})
+    if edu_dist:
+        edus = '、'.join([f"{k}({v})" for k, v in edu_dist.items()])
+        print(f"  📚 五育覆盖：{edus}")
+    
+    print("─" * 30)
+    
+    # 自动导出日志
+    path = get_session_manager().export_session(session.session_id)
+    if path:
+        print(f"\n💾 访谈记录已自动保存至：")
+        print(f"   {path}")
+    
+    print("\n" + "═" * 50)
+    print("✨ 感谢参与访谈，祝你学习进步！")
+    print("═" * 50 + "\n")
 
 
 def run_web_mode():
@@ -253,9 +271,14 @@ def main():
     """
     主入口函数
     """
-    print("=" * 60)
-    print("    大学生五育并举访谈智能体（百度千帆增强版）")
-    print("=" * 60)
+    print()
+    print("╔" + "═" * 58 + "╗")
+    print("║" + " " * 58 + "║")
+    print("║" + "🎓 大学生五育并举访谈智能体".center(48) + "║")
+    print("║" + " " * 58 + "║")
+    print("║" + "探索德·智·体·美·劳，记录你的成长故事".center(42) + "║")
+    print("║" + " " * 58 + "║")
+    print("╚" + "═" * 58 + "╝")
     
     # 确保目录存在
     ensure_dirs()
@@ -264,8 +287,12 @@ def main():
     setup_api_interactive()
     
     # 选择模式
-    print("\n" + "-" * 50)
-    mode = input("请选择启动模式 (1: 命令行交互, 2: Web扫码版) [默认2]: ").strip()
+    print("\n" + "─" * 50)
+    print("请选择启动模式：")
+    print("  1. 💻 命令行模式 - 在终端中进行访谈")
+    print("  2. 🌐 Web模式   - 生成网页链接，支持手机访问")
+    print("─" * 50)
+    mode = input("请输入选项 [默认2]: ").strip()
     
     if mode == "1":
         run_cli_mode()

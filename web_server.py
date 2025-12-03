@@ -51,8 +51,7 @@ class WebInterviewHandler:
         welcome = (
             "🎓 欢迎参加大学生五育并举访谈！\n\n"
             "本次访谈将随机抽取6题，涵盖学校、家庭、社区三场景及德、智、体、美、劳五育。\n"
-            "请认真回答每个问题，系统会根据你的回答进行智能追问。\n\n"
-            "提示：输入 /跳过 可跳过当前问题"
+            "请认真回答每个问题，系统会根据你的回答进行智能追问。"
         )
         
         history = [
@@ -89,7 +88,7 @@ class WebInterviewHandler:
         
         if self.session.is_finished:
             # 访谈已结束
-            history.append([user_input, "访谈已结束，请点击下方按钮导出日志或刷新页面开始新访谈。"])
+            history.append([user_input, "访谈已结束，请点击下方按钮开始新访谈。"])
             return history, "", gr.update(interactive=False)
         
         if not user_input.strip():
@@ -101,7 +100,9 @@ class WebInterviewHandler:
             history.append([user_input, "好的，已跳过当前问题。"])
             
             if result.is_finished:
-                history.append([None, "🎉 访谈结束！感谢你的参与。\n\n可以点击下方按钮导出访谈日志。"])
+                # 访谈结束，自动导出日志
+                self.export_log()
+                history.append([None, "🎉 访谈结束！感谢你的参与。"])
                 return history, "", gr.update(interactive=False)
             else:
                 history.append([None, result.next_question])
@@ -119,9 +120,10 @@ class WebInterviewHandler:
             history[-1][1] = "收到。"
             history.append([None, f"{prefix}{result.followup_question}"])
         elif result.is_finished:
-            # 访谈结束
+            # 访谈结束，自动导出日志
+            self.export_log()
             history[-1][1] = "收到。"
-            history.append([None, "🎉 访谈结束！感谢你的参与。\n\n可以点击下方按钮导出访谈日志。"])
+            history.append([None, "🎉 访谈结束！感谢你的参与。"])
             return history, "", gr.update(interactive=False)
         else:
             # 进入下一题
@@ -210,7 +212,7 @@ def create_web_interface():
         gr.Markdown("基于百度千帆大模型的智能访谈系统，支持多人同时访谈")
         
         with gr.Row():
-            with gr.Column(scale=3):
+            with gr.Column():
                 # 聊天区域
                 chatbot = gr.Chatbot(
                     label="访谈对话",
@@ -221,31 +223,22 @@ def create_web_interface():
                 with gr.Row():
                     msg = gr.Textbox(
                         label="你的回答",
-                        placeholder="在这里输入回答，按回车发送... (输入 /跳过 可跳过当前问题)",
+                        placeholder="在这里输入回答，按回车发送...",
                         scale=4,
                         show_label=False
                     )
                     submit_btn = gr.Button("发送", variant="primary", scale=1)
+                    skip_btn = gr.Button("⏭️ 跳过", variant="secondary", scale=1)
                 
                 with gr.Row():
-                    export_btn = gr.Button("📥 导出访谈日志", variant="secondary")
                     refresh_btn = gr.Button("🔄 开始新访谈", variant="secondary")
-                
-                export_file = gr.File(label="下载日志文件", visible=False)
-            
-            with gr.Column(scale=1):
-                # 统计信息面板
-                gr.Markdown("### 📊 访谈统计")
-                stats_display = gr.Markdown("访谈开始后显示统计信息...")
-                refresh_stats_btn = gr.Button("刷新统计", size="sm")
         
         # 事件处理函数
         def init_handler():
             """初始化处理器"""
             handler = WebInterviewHandler()
             history, _ = handler.initialize()
-            stats = handler.get_statistics()
-            return handler, history, stats
+            return handler, history
         
         def respond(user_input, history, handler):
             """处理用户输入"""
@@ -254,66 +247,51 @@ def create_web_interface():
                 history, _ = handler.initialize()
             
             new_history, clear_input, input_update = handler.process_message(user_input, history)
-            stats = handler.get_statistics()
-            return new_history, clear_input, input_update, handler, stats
+            return new_history, clear_input, input_update, handler
         
-        def export_data(handler):
-            """导出日志"""
+        def skip_question(history, handler):
+            """跳过当前问题"""
             if handler is None:
-                return None, gr.update(visible=False)
+                return history, handler
             
-            path = handler.export_log()
-            if path:
-                return path, gr.update(visible=True)
-            return None, gr.update(visible=False)
-        
-        def refresh_stats(handler):
-            """刷新统计"""
-            if handler is None:
-                return "暂无统计信息"
-            return handler.get_statistics()
+            # 调用跳过处理
+            new_history, clear_input, input_update = handler.process_message("/跳过", history)
+            return new_history, handler, input_update
         
         def new_interview():
             """开始新访谈"""
             handler = WebInterviewHandler()
             history, _ = handler.initialize()
-            stats = handler.get_statistics()
-            return handler, history, stats, gr.update(interactive=True), gr.update(visible=False)
+            return handler, history, gr.update(interactive=True)
         
         # 页面加载时初始化
         demo.load(
             init_handler,
-            outputs=[handler_state, chatbot, stats_display]
+            outputs=[handler_state, chatbot]
         )
         
         # 绑定事件
         msg.submit(
             respond,
             [msg, chatbot, handler_state],
-            [chatbot, msg, msg, handler_state, stats_display]
+            [chatbot, msg, msg, handler_state]
         )
         
         submit_btn.click(
             respond,
             [msg, chatbot, handler_state],
-            [chatbot, msg, msg, handler_state, stats_display]
+            [chatbot, msg, msg, handler_state]
         )
         
-        export_btn.click(
-            export_data,
-            inputs=[handler_state],
-            outputs=[export_file, export_file]
-        )
-        
-        refresh_stats_btn.click(
-            refresh_stats,
-            inputs=[handler_state],
-            outputs=[stats_display]
+        skip_btn.click(
+            skip_question,
+            [chatbot, handler_state],
+            [chatbot, handler_state, msg]
         )
         
         refresh_btn.click(
             new_interview,
-            outputs=[handler_state, chatbot, stats_display, msg, export_file]
+            outputs=[handler_state, chatbot, msg]
         )
     
     return demo

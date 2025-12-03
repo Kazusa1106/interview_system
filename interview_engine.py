@@ -289,6 +289,7 @@ class InterviewEngine:
             
             if need_followup:
                 self.session.is_followup = True
+                self.session.current_followup_is_ai = is_ai  # 保存追问类型
                 result.need_followup = True
                 result.followup_question = followup_q
                 result.is_ai_generated = is_ai
@@ -300,13 +301,15 @@ class InterviewEngine:
         
         else:
             # 处理追问回答
+            is_ai_followup = getattr(self.session, 'current_followup_is_ai', False)
             log_entry = {
                 "timestamp": timestamp,
                 "topic": current_topic["name"],
                 "question_type": "追问回答",
                 "question": "（上轮追问）",
                 "answer": answer.strip() or "用户未补充回答",
-                "depth_score": self.score_depth(answer)
+                "depth_score": self.score_depth(answer),
+                "is_ai_generated": is_ai_followup  # 记录是否为AI追问
             }
             self.session.conversation_log.append(log_entry)
             

@@ -27,6 +27,7 @@ class InterviewSession:
     is_finished: bool = False
     current_question_idx: int = 0
     is_followup: bool = False
+    current_followup_is_ai: bool = False  # 当前追问是否为AI生成
     selected_topics: List[Dict] = field(default_factory=list)
     conversation_log: List[Dict] = field(default_factory=list)
     

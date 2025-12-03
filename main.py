@@ -96,6 +96,12 @@ def setup_api_interactive():
     provider = providers[selected_id]
     print(f"\n已选择：{provider.name}")
     print(f"获取 API Key：{provider.website}")
+    
+    # 特别提示：不要使用推理模型
+    if selected_id == "deepseek":
+        print("\n⚠️ 注意：请使用 deepseek-chat 模型")
+        print("   不要使用 deepseek-reasoner (R1)，推理模型不适合对话场景")
+    
     print("-" * 50)
     
     # 输入 API Key

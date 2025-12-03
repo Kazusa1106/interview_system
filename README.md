@@ -54,13 +54,15 @@ python main.py
 
 ### 支持的 API 提供商
 
-| 提供商 | 默认模型 | 获取API Key |
+| 提供商 | 推荐模型 | 获取API Key |
 |--------|----------|-------------|
 | **DeepSeek** | deepseek-chat | [platform.deepseek.com](https://platform.deepseek.com/) |
 | **OpenAI** | gpt-3.5-turbo | [platform.openai.com](https://platform.openai.com/) |
 | **通义千问** | qwen-turbo | [dashscope.console.aliyun.com](https://dashscope.console.aliyun.com/) |
 | **智谱AI** | glm-4-flash | [open.bigmodel.cn](https://open.bigmodel.cn/) |
 | **百度千帆** | ernie-3.5-8k | [qianfan.baidubce.com](https://qianfan.baidubce.com/) |
+
+> ⚠️ **注意**：DeepSeek 请使用 `deepseek-chat` 模型，不要使用 `deepseek-reasoner` (R1)。R1 是推理模型，适合数学/逻辑任务，不适合对话场景，会导致追问内容异常。
 
 ### API配置流程
 

@@ -46,7 +46,7 @@ API_PROVIDERS: Dict[str, APIProviderConfig] = {
         base_url="https://api.deepseek.com/v1",
         default_model="deepseek-chat",
         api_key_name="API Key",
-        models=["deepseek-chat", "deepseek-reasoner"],  # deepseek-chat 推荐用于对话
+        models=["deepseek-chat"],  # 仅支持 chat 模型，R1 推理模型不适合对话场景
         website="https://platform.deepseek.com/"
     ),
     "openai": APIProviderConfig(

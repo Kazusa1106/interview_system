@@ -272,16 +272,44 @@ class UnifiedAPIClient:
             return None
         
         topic_name = topic.get("name", "")
-        prompt = f"""
-        用户回答了{topic_name}的问题，回答是：{valid_answer}
-        生成1个口语化追问（≤25字），满足：
-        1. 不重复原问题，不使用"能结合具体经历说说吗？"这类通用表述；
-        2. 针对回答中的具体细节（如事件、动作、感受）深挖；
-        3. 引导用户补充未提及的细节（如困难、他人反应、收获）。
-        示例：
-        - 回答"小组作业主动统筹拿优秀"→追问"协调分工时队友有抵触吗？"
-        - 回答"社区羽毛球赛和陌生人配合"→追问"配合失误时怎么沟通的？"
-        """
+        scene, edu_type = topic_name.split("-") if "-" in topic_name else ("", "")
+        original_question = topic.get("questions", [""])[0]
+        
+        # 构建对话历史上下文
+        history_context = ""
+        if conversation_log:
+            recent_logs = [log for log in conversation_log[-6:] if log.get("topic") == topic_name]
+            if recent_logs:
+                history_parts = []
+                for log in recent_logs:
+                    q_type = log.get("question_type", "")
+                    ans = log.get("answer", "")
+                    if "核心" in q_type:
+                        history_parts.append(f"核心问题回答：{ans}")
+                    elif "追问" in q_type:
+                        history_parts.append(f"追问后补充：{ans}")
+                if history_parts:
+                    history_context = "\n之前的回答记录：\n" + "\n".join(history_parts)
+        
+        # 优化后的prompt
+        prompt = f"""你是一位友善的访谈员，正在进行关于大学生五育发展的访谈。
+
+当前话题：{topic_name}
+场景：{scene}  维度：{edu_type}
+原始问题：{original_question}
+
+用户最新回答：{valid_answer}
+{history_context}
+
+请生成一个自然、口语化的追问，要求：
+1. 像朋友聊天一样自然，不要太正式
+2. 针对用户回答中提到的具体内容深入追问
+3. 可以追问：具体的细节、当时的感受、遇到的困难、他人的反应、后来的影响等
+4. 不要重复已经问过的内容
+5. 不要使用"能具体说说吗"这类笼统的表述
+6. 追问要与{edu_type}主题相关
+
+直接输出追问内容，不要有任何前缀或解释。"""
         
         return self._call_with_retry(prompt, topic)
     
@@ -304,11 +332,11 @@ class UnifiedAPIClient:
                 response = self.client.chat.completions.create(
                     model=self.model,
                     messages=[
-                        {"role": "system", "content": "只生成1个追问，简洁有针对性"},
+                        {"role": "system", "content": "你是一位友善的访谈员，擅长通过追问引导对方分享更多细节和感受。只输出追问内容，不要有任何前缀。"},
                         {"role": "user", "content": prompt.strip()}
                     ],
-                    max_tokens=50,
-                    temperature=0.7,
+                    max_tokens=100,
+                    temperature=0.8,
                     n=1
                 )
                 
@@ -317,14 +345,20 @@ class UnifiedAPIClient:
                 if response and response.choices:
                     follow_question = response.choices[0].message.content.strip()
                     
-                    # 校验追问质量
+                    # 清理可能的前缀
+                    prefixes_to_remove = ["追问：", "追问:", "问：", "问:"]
+                    for prefix in prefixes_to_remove:
+                        if follow_question.startswith(prefix):
+                            follow_question = follow_question[len(prefix):].strip()
+                    
+                    # 校验追问质量（移除字数限制）
                     preset_follows = topic.get("followups", [])
                     original_question = topic.get("questions", [""])[0]
                     
                     if (follow_question
+                            and len(follow_question) >= 5  # 最小长度
                             and follow_question not in original_question
-                            and follow_question not in preset_follows
-                            and len(follow_question) <= 25):
+                            and follow_question not in preset_follows):
                         logger.log_api_call("generate_followup", True, duration)
                         return follow_question
                 

@@ -170,19 +170,23 @@ class InterviewEngine:
         """
         valid_answer = answer.strip()
         depth_score = self.score_depth(valid_answer)
+        followup_count = getattr(self.session, 'current_followup_count', 0)
+        max_followups = self.config.max_followups_per_question
+        
+        # 检查是否已达到最大追问次数
+        if followup_count >= max_followups:
+            logger.log_interview(
+                self.session.session_id,
+                "跳过追问",
+                {"reason": f"已达到最大追问次数({max_followups})", "followup_count": followup_count}
+            )
+            return False, "", False
         
         # 情况1：空回答或短回答 - 需要追问
         if not valid_answer or len(valid_answer) < self.config.min_answer_length:
             return self._generate_followup_question(valid_answer, topic, force=True)
         
-        # 情况2：长回答但跑题 - 需要追问
-        topic_keywords = topic["name"].split("-")
-        is_on_topic = any(kw in valid_answer for kw in topic_keywords)
-        
-        if len(valid_answer) >= self.config.min_answer_length and not is_on_topic:
-            return self._generate_followup_question(valid_answer, topic, force=True)
-        
-        # 情况3：回答深度满分 - 不追问
+        # 情况2：回答深度满分 - 不追问
         if depth_score >= self.config.max_depth_score:
             logger.log_interview(
                 self.session.session_id,
@@ -191,7 +195,7 @@ class InterviewEngine:
             )
             return False, "", False
         
-        # 情况4：回答深度不足 - 尝试AI追问
+        # 情况3：回答深度不足 - 尝试AI追问
         return self._generate_followup_question(valid_answer, topic, force=False)
     
     def _generate_followup_question(
@@ -290,6 +294,7 @@ class InterviewEngine:
             if need_followup:
                 self.session.is_followup = True
                 self.session.current_followup_is_ai = is_ai  # 保存追问类型
+                self.session.current_followup_count = 1  # 开始第一次追问
                 result.need_followup = True
                 result.followup_question = followup_q
                 result.is_ai_generated = is_ai
@@ -316,15 +321,30 @@ class InterviewEngine:
             logger.log_interview(
                 self.session.session_id,
                 "记录追问回答",
-                {"topic": current_topic["name"]}
+                {"topic": current_topic["name"], "followup_count": self.session.current_followup_count}
             )
             
+            # 判断是否需要继续追问
+            need_more_followup, followup_q, is_ai = self.should_followup(answer, current_topic)
+            
+            if need_more_followup:
+                self.session.current_followup_count += 1
+                self.session.current_followup_is_ai = is_ai
+                result.need_followup = True
+                result.followup_question = followup_q
+                result.is_ai_generated = is_ai
+                result.message = "请继续补充"
+                return result
+            
+            # 不需要继续追问，进入下一题
             self.session.is_followup = False
+            self.session.current_followup_count = 0
             return self._move_to_next_question(result)
     
     def _move_to_next_question(self, result: QuestionResult) -> QuestionResult:
         """移动到下一题"""
         self.session.current_question_idx += 1
+        self.session.current_followup_count = 0  # 重置追问计数
         
         if self.session.current_question_idx >= self.config.total_questions:
             self.session.is_finished = True

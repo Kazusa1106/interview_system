@@ -1,11 +1,18 @@
 # 大学生五育并举访谈智能体 - 依赖列表
+# Python版本要求：3.8 - 3.11
+python>=3.8,<3.12
 
 # 核心依赖
-openai>=1.0.0          # 百度千帆API（兼容OpenAI SDK）
+openai>=1.20.0,<2.0.0          # OpenAI SDK（支持百度千帆等兼容接口）
 
 # Web界面依赖
-gradio>=4.0.0          # Web界面框架
-qrcode[pil]>=7.0       # 二维码生成
+gradio>=4.40.0,<5.0.0          # Web界面框架（避免5.x破坏性更新）
+qrcode[pil]>=7.0,<9.0          # 二维码生成
 
 # 可选依赖（已内置于Python标准库）
 # json, datetime, os, random, logging, threading, uuid, socket
+
+# 注意事项：
+# 1. 推荐使用虚拟环境安装：python -m venv venv && source venv/bin/activate
+# 2. 如果遇到依赖冲突，可使用requirements-lock.txt安装精确版本
+# 3. 不支持Python 3.12+（Gradio兼容性问题）

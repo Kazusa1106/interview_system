@@ -1,0 +1,46 @@
+# 大学生五育并举访谈智能体 - 锁定版本依赖
+# 该文件包含经过测试的精确版本，用于解决依赖冲突问题
+# 生成时间：2025-12-17
+# Python版本：3.9.13
+
+# 核心依赖（及传递依赖）
+anyio==4.12.0
+fastapi==0.123.4
+gradio==4.44.1
+gradio_client==1.3.0
+httpx==0.27.0
+openai==1.26.0
+pydantic==2.7.1
+pydantic_core==2.18.2
+qrcode==8.2
+urllib3==2.5.0
+
+# Gradio传递依赖（核心包）
+aiofiles==23.2.1
+ffmpy==0.3.2
+huggingface-hub==0.21.4
+importlib_resources==6.4.0
+jinja2==3.1.2
+markupsafe==2.1.5
+matplotlib==3.9.0
+numpy==1.26.4
+orjson==3.10.3
+pandas==2.2.2
+pillow==10.3.0
+python-multipart==0.0.9
+pyyaml==6.0.1
+ruff==0.6.1
+semantic-version==2.10.0
+tomlkit==0.12.4
+typer==0.12.3
+typing_extensions==4.11.4
+uvicorn==0.29.0
+
+# 其他传递依赖
+sniffio==1.3.1
+tqdm==4.66.4
+
+# 注意事项：
+# 1. 该文件仅用于解决依赖冲突，正常使用请先尝试 requirements.txt
+# 2. 安装前建议创建虚拟环境：python -m venv venv
+# 3. 如果仍有问题，请检查Python版本是否为3.8-3.11

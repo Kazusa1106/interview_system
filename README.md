@@ -32,20 +32,67 @@ interview_system/
 
 ## 🚀 快速开始
 
-### 1. 安装依赖
+### 环境要求
+
+- **Python版本**: 3.8 - 3.11（不支持3.12+）
+- **操作系统**: Windows 10/11, macOS, Linux
+
+### 检查Python版本
 
 ```bash
-cd interview_system
-pip install -r requirements.txt
+python --version
+# 或
+python3 --version
 ```
 
-### 2. 运行程序
+**重要**: 如果版本是3.12+，请先安装Python 3.8-3.11版本：
+- [Python官方下载](https://www.python.org/downloads/)
+- Windows: 可从Microsoft Store安装Python 3.11
+- macOS: 使用pyenv管理多版本
+
+### 安装步骤
+
+#### 方法一：推荐（使用虚拟环境）
 
 ```bash
+# 1. 克隆项目
+git clone <项目地址>
+cd interview_system
+
+# 2. 创建虚拟环境
+python -m venv venv
+
+# 3. 激活虚拟环境
+# Windows:
+venv\Scripts\activate
+# Linux/macOS:
+source venv/bin/activate
+
+# 4. 安装依赖
+pip install -r requirements.txt
+
+# 5. 运行程序
 python main.py
 ```
 
-### 3. 选择模式
+#### 方法二：直接安装（不推荐）
+
+```bash
+pip install -r requirements.txt
+python main.py
+```
+
+### 依赖冲突解决方案
+
+如果遇到依赖冲突问题，请使用以下命令安装精确版本：
+
+```bash
+pip install -r requirements-lock.txt
+```
+
+### 选择运行模式
+
+启动程序后，可选择以下模式：
 
 - 输入 `1`：命令行交互模式
 - 输入 `2`（默认）：Web扫码版，支持手机访问

@@ -2,7 +2,7 @@
 # coding: utf-8
 """
 会话管理模块 - 大学生五育并举访谈智能体
-支持多人同时访谈的会话管理
+支持多人同时访谈的会话管理，集成数据库持久化
 """
 
 import json
@@ -15,6 +15,14 @@ from typing import Dict, List, Optional
 
 import logger
 from config import WEB_CONFIG, EXPORT_DIR, ensure_dirs
+
+# 尝试导入数据库模块（可选依赖）
+try:
+    from database import get_database
+    DATABASE_AVAILABLE = True
+except ImportError:
+    DATABASE_AVAILABLE = False
+    logger.warning("数据库模块未加载，会话数据仅保存在内存中")
 
 
 @dataclass
@@ -49,6 +57,20 @@ class InterviewSession:
             "conversation_log": self.conversation_log
         }
 
+    @classmethod
+    def from_db_dict(cls, data: dict) -> 'InterviewSession':
+        """从数据库字典创建会话对象"""
+        return cls(
+            session_id=data.get('session_id', ''),
+            user_name=data.get('user_name', '访谈者'),
+            start_time=data.get('start_time', ''),
+            end_time=data.get('end_time', ''),
+            is_finished=data.get('is_finished', False),
+            current_question_idx=data.get('current_question_idx', 0),
+            selected_topics=data.get('selected_topics', []),
+            conversation_log=[]  # 日志需要单独加载
+        )
+
 
 class SessionManager:
     """会话管理器 - 支持多人同时访谈"""
@@ -68,22 +90,26 @@ class SessionManager:
     def __init__(self):
         if self._initialized:
             return
-        
+
         self._sessions: Dict[str, InterviewSession] = {}
         self._session_lock = threading.Lock()
         self._max_sessions = WEB_CONFIG.max_sessions
         self._initialized = True
-        
+
+        # 初始化数据库（如果可用）
+        self._db = get_database() if DATABASE_AVAILABLE else None
+
         ensure_dirs()
-        logger.info("会话管理器初始化完成")
+        db_status = "已启用" if self._db else "未启用"
+        logger.info(f"会话管理器初始化完成 (数据库: {db_status})")
     
     def create_session(self, user_name: str = None) -> InterviewSession:
         """
         创建新会话
-        
+
         Args:
             user_name: 用户名（可选）
-            
+
         Returns:
             新创建的会话
         """
@@ -91,52 +117,84 @@ class SessionManager:
             # 检查会话数量限制
             if len(self._sessions) >= self._max_sessions:
                 self._cleanup_expired_sessions()
-                
+
                 if len(self._sessions) >= self._max_sessions:
                     logger.warning("会话数量已达上限，清理最旧的会话")
                     self._remove_oldest_session()
-            
+
             # 创建新会话
             session_id = str(uuid.uuid4())[:8]
             session = InterviewSession(
                 session_id=session_id,
                 user_name=user_name or f"访谈者_{session_id}"
             )
-            
+
             self._sessions[session_id] = session
+
+            # 同步保存到数据库
+            if self._db:
+                self._db.create_session(
+                    session_id=session.session_id,
+                    user_name=session.user_name,
+                    selected_topics=session.selected_topics
+                )
+
             logger.log_session(session_id, "创建会话", f"用户: {session.user_name}")
-            
+
             return session
     
     def get_session(self, session_id: str) -> Optional[InterviewSession]:
         """
         获取会话
-        
+
         Args:
             session_id: 会话ID
-            
+
         Returns:
             会话对象，不存在返回 None
         """
-        return self._sessions.get(session_id)
+        # 先从内存中获取
+        session = self._sessions.get(session_id)
+
+        # 如果内存中没有，尝试从数据库加载
+        if not session and self._db:
+            db_session = self._db.get_session(session_id)
+            if db_session:
+                session = InterviewSession.from_db_dict(db_session)
+                # 加载对话日志
+                session.conversation_log = self._db.get_conversation_logs(session_id)
+                # 缓存到内存
+                self._sessions[session_id] = session
+
+        return session
     
     def update_session(self, session: InterviewSession):
         """
         更新会话
-        
+
         Args:
             session: 会话对象
         """
         with self._session_lock:
             self._sessions[session.session_id] = session
-    
+
+            # 同步更新到数据库
+            if self._db:
+                self._db.update_session(
+                    session_id=session.session_id,
+                    current_question_idx=session.current_question_idx,
+                    selected_topics=session.selected_topics,
+                    is_finished=session.is_finished,
+                    end_time=session.end_time if session.end_time else None
+                )
+
     def end_session(self, session_id: str) -> bool:
         """
         结束会话
-        
+
         Args:
             session_id: 会话ID
-            
+
         Returns:
             是否成功结束
         """
@@ -144,9 +202,42 @@ class SessionManager:
         if session:
             session.is_finished = True
             session.end_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            # 同步更新到数据库
+            if self._db:
+                self._db.update_session(
+                    session_id=session_id,
+                    is_finished=True,
+                    end_time=session.end_time
+                )
+
             logger.log_session(session_id, "结束会话")
             return True
         return False
+
+    def add_conversation_log(self, session_id: str, log_entry: Dict) -> bool:
+        """
+        添加对话日志
+
+        Args:
+            session_id: 会话ID
+            log_entry: 日志条目
+
+        Returns:
+            是否成功添加
+        """
+        session = self.get_session(session_id)
+        if not session:
+            return False
+
+        # 添加到内存
+        session.conversation_log.append(log_entry)
+
+        # 同步保存到数据库
+        if self._db:
+            self._db.add_conversation_log(session_id, log_entry)
+
+        return True
     
     def remove_session(self, session_id: str) -> bool:
         """
@@ -170,8 +261,22 @@ class SessionManager:
         return sum(1 for s in self._sessions.values() if not s.is_finished)
     
     def get_all_sessions(self) -> List[InterviewSession]:
-        """获取所有会话"""
-        return list(self._sessions.values())
+        """获取所有会话（优先从数据库加载）"""
+        if self._db:
+            # 从数据库加载所有会话
+            db_sessions = self._db.get_all_sessions(limit=1000)
+            sessions = []
+            for db_session in db_sessions:
+                # 先尝试从内存获取
+                session = self._sessions.get(db_session['session_id'])
+                if not session:
+                    # 从数据库数据创建会话对象（不加载完整日志，提高性能）
+                    session = InterviewSession.from_db_dict(db_session)
+                sessions.append(session)
+            return sessions
+        else:
+            # 仅返回内存中的会话
+            return list(self._sessions.values())
     
     def export_session(self, session_id: str, file_path: str = None) -> Optional[str]:
         """
@@ -276,6 +381,57 @@ class SessionManager:
         )
         del self._sessions[oldest_sid]
         logger.log_session(oldest_sid, "移除最旧会话")
+
+    # ========== 统计分析方法 ==========
+
+    def get_statistics(self, start_date: str = None, end_date: str = None) -> Dict:
+        """
+        获取统计数据
+
+        Args:
+            start_date: 开始日期 (YYYY-MM-DD)
+            end_date: 结束日期 (YYYY-MM-DD)
+
+        Returns:
+            统计数据字典
+        """
+        if self._db:
+            return self._db.get_statistics_by_date_range(start_date, end_date)
+        else:
+            # 从内存会话计算统计（简化版）
+            total = len(self._sessions)
+            finished = sum(1 for s in self._sessions.values() if s.is_finished)
+            return {
+                'total_sessions': total,
+                'finished_sessions': finished,
+                'completion_rate': round(finished / total * 100, 1) if total > 0 else 0,
+                'scene_distribution': {},
+                'edu_distribution': {},
+                'followup_distribution': {},
+                'avg_depth_score': 0
+            }
+
+    def get_daily_statistics(self, days: int = 7) -> List[Dict]:
+        """
+        获取最近N天的每日统计
+
+        Args:
+            days: 天数
+
+        Returns:
+            每日统计数据列表
+        """
+        if self._db:
+            return self._db.get_daily_statistics(days)
+        else:
+            return []
+
+    def get_session_count(self) -> int:
+        """获取总会话数"""
+        if self._db:
+            return self._db.get_session_count()
+        else:
+            return len(self._sessions)
 
 
 # ----------------------------

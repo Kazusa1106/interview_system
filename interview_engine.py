@@ -280,7 +280,8 @@ class InterviewEngine:
                 "answer": valid_answer,
                 "depth_score": depth
             }
-            self.session.conversation_log.append(log_entry)
+            # 使用session_manager的add_conversation_log方法保存
+            get_session_manager().add_conversation_log(self.session.session_id, log_entry)
             
             logger.log_interview(
                 self.session.session_id,
@@ -318,7 +319,8 @@ class InterviewEngine:
                 "depth_score": self.score_depth(answer),
                 "is_ai_generated": is_ai_followup  # 记录是否为AI追问
             }
-            self.session.conversation_log.append(log_entry)
+            # 使用session_manager的add_conversation_log方法保存
+            get_session_manager().add_conversation_log(self.session.session_id, log_entry)
             
             logger.log_interview(
                 self.session.session_id,
@@ -383,7 +385,8 @@ class InterviewEngine:
                 "answer": "用户选择跳过",
                 "depth_score": 0
             }
-            self.session.conversation_log.append(log_entry)
+            # 使用session_manager的add_conversation_log方法保存
+            get_session_manager().add_conversation_log(self.session.session_id, log_entry)
             
             logger.log_interview(
                 self.session.session_id,

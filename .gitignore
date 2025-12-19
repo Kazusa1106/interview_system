@@ -1,8 +1,16 @@
-# Python
+# ============================================
+# Python 编译文件
+# ============================================
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+*.pyd
+*.pyo
+
+# ============================================
+# Python 分发 / 打包
+# ============================================
 .Python
 build/
 develop-eggs/
@@ -16,48 +24,190 @@ parts/
 sdist/
 var/
 wheels/
+pip-wheel-metadata/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
+# ============================================
 # 虚拟环境
+# ============================================
 venv/
 ENV/
 env/
 .venv/
+.env/
+env.bak/
+venv.bak/
+pythonenv*/
 
-# IDE
+# ============================================
+# IDE 和编辑器配置
+# ============================================
+# PyCharm
 .idea/
+*.iml
+*.iws
+.idea_modules/
+
+# VS Code
 .vscode/
+*.code-workspace
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
 *.swp
 *.swo
 *~
+.*.sw[a-z]
+*.un~
+Session.vim
 
+# Emacs
+*~
+\#*\#
+.\#*
+.projectile
+
+# Eclipse
+.project
+.pydevproject
+.settings/
+
+# ============================================
+# 操作系统文件
+# ============================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.directory
+.Trash-*
+
+# ============================================
+# 项目特定 - 运行时生成文件
+# ============================================
 # 日志文件
 logs/
 *.log
 
 # 导出文件
 exports/
+*.json.backup
 
-# API密钥（敏感信息）
-api_config.json
+# 数据库文件
+interview_data.db
+interview_data.db-journal
+*.db
+*.db-wal
+*.db-shm
 
 # 二维码图片
 access_code.png
+qr_code_*.png
 
-# 系统文件
-.DS_Store
-Thumbs.db
+# HTML报告
+reports/
+*.html
 
-# Jupyter Notebook
-.ipynb_checkpoints/
+# ============================================
+# 项目特定 - 敏感信息
+# ============================================
+# API配置（包含密钥）
+api_config.json
+.env
+.env.local
+.env.*.local
+config.local.py
+secrets.json
+
+# ============================================
+# 测试相关
+# ============================================
+# pytest
+.pytest_cache/
+.cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
 
 # 测试覆盖率
 htmlcov/
 .coverage
 .coverage.*
-.pytest_cache/
+.hypothesis/
 
-.claude
-CLAUDE.md
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb
+
+# ============================================
+# 代码质量工具
+# ============================================
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre
+.pyre/
+
+# pytype
+.pytype/
+
+# Cython debug
+cython_debug/
+
+# ============================================
+# 文档构建
+# ============================================
+docs/_build/
+docs/_static/
+docs/_templates/
+site/
+
+# ============================================
+# 备份和临时文件
+# ============================================
+*.bak
+*.tmp
+*.temp
+*~
+.~*
+*.orig
+
+# ============================================
+# Claude Code 配置（可选忽略）
+# ============================================
+.claude/
+# CLAUDE.md  # 如果想保留项目配置，请注释此行
+.spec-workflow/
+
+# ============================================
+# 其他
+# ============================================
+# 压缩文件（如果不需要提交）
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# 大文件标记
+*.large

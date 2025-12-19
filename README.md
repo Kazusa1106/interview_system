@@ -4,30 +4,52 @@
 
 ## ✨ 特性
 
+### 核心功能
 - 🤖 **智能追问**：支持多种大模型API（DeepSeek、OpenAI、通义千问、智谱AI、百度千帆），根据回答内容生成针对性追问
 - 🔄 **多轮追问**：每题最多追问3次，根据回答深度动态决定是否继续追问
 - 🧠 **上下文感知**：AI追问结合用户之前的回答历史，追问更有针对性
 - 👥 **多人同时访谈**：支持多用户同时进行访谈，会话隔离
 - 📱 **双模式支持**：命令行交互 + Web扫码访问
-- 💾 **自动导出**：访谈结束时自动保存JSON日志
+
+### 🆕 第一阶段优化新增功能 (v2.0)
+- 💾 **数据持久化**：使用SQLite数据库，所有访谈数据永久保存，服务重启不丢失
+- 📊 **数据可视化**：内置Plotly图表，支持饼图、柱状图、趋势图、统计仪表盘
+- 🔧 **管理后台**：全新管理界面，查看所有访谈、统计分析、数据导出
+- 📈 **实时统计**：访谈进度跟踪、场景/五育分布分析、完成率统计
+- 🎨 **界面优化**：渐变色设计、进度条显示、侧边栏指南、更好的用户体验
+- 📑 **HTML报告**：一键生成精美的HTML统计报告
 
 ## 📁 项目结构
 
 ```
 interview_system/
-├── __init__.py          # 包初始化文件
-├── config.py            # 配置文件（系统参数）
-├── questions.py         # 题目配置（15个访谈话题：3场景×5育）
-├── logger.py            # 统一日志模块
-├── api_client.py        # 统一API客户端（支持多种大模型）
-├── session_manager.py   # 会话管理（支持多人同时访谈）
-├── interview_engine.py  # 访谈核心引擎（追问逻辑、评分）
-├── web_server.py        # Web服务模块（Gradio界面）
-├── main.py              # 主入口文件
-├── requirements.txt     # 依赖列表
-├── api_config.json      # API配置（自动生成）
-├── exports/             # 导出的访谈记录
-└── logs/                # 日志文件
+├── __init__.py           # 包初始化文件
+├── config.py             # 配置文件（系统参数）
+├── questions.py          # 题目配置（15个访谈话题：3场景×5育）
+├── logger.py             # 统一日志模块
+├── api_client.py         # 统一API客户端（支持多种大模型）
+├── session_manager.py    # 会话管理（支持多人同时访谈+数据库持久化）
+├── interview_engine.py   # 访谈核心引擎（追问逻辑、评分）
+├── web_server.py         # Web访谈界面（Gradio界面）
+├── database.py           # 🆕 数据库模块（SQLite持久化）
+├── visualization.py      # 🆕 数据可视化模块（Plotly图表）
+├── admin_server.py       # 🆕 管理后台界面
+├── main.py               # 主入口文件
+├── requirements.txt      # 依赖列表
+├── requirements-lock.txt # 精确版本依赖
+├── README.md             # 项目说明文档
+├── CLAUDE.md             # Claude Code项目配置
+├── interview_data.db     # 🆕 SQLite数据库（自动生成）
+├── api_config.json       # API配置（自动生成）
+├── docs/                 # 📚 文档目录
+│   ├── QUICKSTART.md     # 快速开始指南
+│   └── INSTALL_TEST.md   # 安装测试指南
+├── scripts/              # 🔧 脚本目录
+│   ├── start_web.bat     # Windows快速启动访谈界面
+│   ├── start_admin.bat   # Windows快速启动管理后台
+│   └── install_and_test.bat  # Windows一键安装测试
+├── exports/              # 导出的访谈记录（自动生成）
+└── logs/                 # 日志文件（自动生成）
 ```
 
 ## 🚀 快速开始
@@ -94,8 +116,47 @@ pip install -r requirements-lock.txt
 
 启动程序后，可选择以下模式：
 
-- 输入 `1`：命令行交互模式
-- 输入 `2`（默认）：Web扫码版，支持手机访问
+- 输入 `1`：💻 命令行交互模式
+- 输入 `2`（默认）：🌐 Web访谈模式，支持手机扫码访问
+- 输入 `3`：🔧 管理后台模式（新增）
+
+### 🆕 使用管理后台
+
+```bash
+# 方式1: 启动时选择模式3
+python main.py
+# 然后输入 3
+
+# 方式2: 直接运行管理后台
+python admin_server.py
+
+# 方式3: 使用快速启动脚本（Windows）
+scripts\start_admin.bat
+```
+
+管理后台功能：
+- 📊 **概览仪表盘**：总访谈数、完成率、趋势图
+- 📋 **会话列表**：查看所有访谈记录和详情
+- 📈 **统计分析**：生成可视化统计图表
+- 💾 **数据导出**：批量导出JSON、生成HTML报告
+- 🔍 **详情查看**：查看每次访谈的完整对话记录
+
+访问地址：`http://localhost:7861`
+
+### Windows 快速启动脚本
+
+项目提供了便捷的Windows批处理脚本：
+
+```bash
+# 一键安装和测试
+scripts\install_and_test.bat
+
+# 启动访谈界面
+scripts\start_web.bat
+
+# 启动管理后台
+scripts\start_admin.bat
+```
 
 ## 🔧 配置说明
 
@@ -271,6 +332,89 @@ main.py
     "followups": ["预设追问1", "预设追问2"]
 }
 ```
+
+## 🆕 新功能使用指南 (v2.0)
+
+### 数据持久化
+
+所有访谈数据自动保存到SQLite数据库（`interview_data.db`），服务重启后数据不丢失。
+
+**数据库包含**：
+- 所有历史会话信息
+- 完整的对话日志
+- 统计分析数据
+
+**备份建议**：定期备份 `interview_data.db` 文件
+
+### 数据可视化
+
+系统内置Plotly图表库，支持多种可视化形式：
+
+```python
+# 在管理后台中
+from visualization import DataVisualizer
+from session_manager import get_session_manager
+
+# 获取统计数据
+stats = get_session_manager().get_statistics()
+
+# 创建可视化图表
+viz = DataVisualizer()
+dashboard = viz.create_statistics_dashboard(stats)
+
+# 生成HTML报告
+viz.generate_html_report(stats, daily_stats, "report.html")
+```
+
+**支持的图表类型**：
+- 饼图：场景分布、五育分布
+- 柱状图：追问类型统计
+- 折线图：访谈量趋势
+- 仪表盘：综合统计展示
+
+### 管理后台API
+
+管理后台提供完整的数据管理功能：
+
+**概览功能**：
+- 实时显示总访谈数、完成率
+- 最近N天趋势图
+- 生成可视化统计报告
+
+**会话管理**：
+- 查看所有访谈列表
+- 查看单次访谈详情
+- 导出指定会话
+- 批量导出所有会话
+
+**统计分析**：
+- 按日期范围筛选统计
+- 场景/五育分布分析
+- AI追问效果分析
+- 生成HTML统计报告
+
+### 数据导出格式
+
+**JSON格式**（程序化处理）：
+```json
+{
+  "session_id": "abc12345",
+  "user_name": "访谈者",
+  "statistics": {
+    "total_logs": 8,
+    "completion_rate": 100,
+    "scene_distribution": {"学校": 3, "家庭": 2, "社区": 3},
+    "edu_distribution": {"德育": 2, "智育": 2, ...}
+  },
+  "conversation_log": [...]
+}
+```
+
+**HTML格式**（可视化报告）：
+- 精美的图表展示
+- 完整的统计信息
+- 可直接在浏览器打开
+- 适合分享和演示
 
 ## 📄 License
 

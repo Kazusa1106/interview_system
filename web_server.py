@@ -240,40 +240,128 @@ def create_web_interface():
     if not GRADIO_AVAILABLE:
         logger.error("Gradio未安装，无法创建Web界面")
         return None
-    
+
+    # 自定义CSS样式
+    custom_css = """
+    .header-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 30px;
+        border-radius: 15px;
+        text-align: center;
+        color: white;
+        margin-bottom: 20px;
+    }
+    .stats-box {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        margin-top: 10px;
+    }
+    .progress-bar {
+        background: #e9ecef;
+        border-radius: 10px;
+        height: 25px;
+        margin: 10px 0;
+    }
+    .progress-fill {
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        height: 100%;
+        border-radius: 10px;
+        transition: width 0.3s ease;
+    }
+    """
+
     with gr.Blocks(
         title=WEB_CONFIG.title,
-        theme=gr.themes.Soft()
+        theme=gr.themes.Soft(),
+        css=custom_css
     ) as demo:
         # 状态：每个用户独立的处理器
         handler_state = gr.State(None)
-        
-        gr.Markdown(f"# 🎓 {WEB_CONFIG.title}")
-        gr.Markdown("探索德、智、体、美、劳五育发展，记录你的成长故事")
-        
+
+        # 美化的标题区域
         with gr.Row():
-            with gr.Column():
+            gr.HTML("""
+            <div class="header-box">
+                <h1 style="margin:0; font-size: 2.5em;">🎓 大学生五育并举访谈智能体</h1>
+                <p style="margin:10px 0 0 0; font-size: 1.1em; opacity: 0.9;">探索德·智·体·美·劳，记录你的成长故事</p>
+            </div>
+            """)
+
+        with gr.Row():
+            with gr.Column(scale=3):
                 # 聊天区域
                 chatbot = gr.Chatbot(
                     label="访谈对话",
-                    height=480,
+                    height=500,
                     show_label=False,
-                    bubble_full_width=False
+                    bubble_full_width=False,
+                    avatar_images=(None, "https://em-content.zobj.net/source/twitter/376/robot_1f916.png")
                 )
-                
+
+                # 进度显示
+                progress_html = gr.HTML("""
+                <div class="stats-box">
+                    <p><strong>📊 访谈进度</strong></p>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 0%;"></div>
+                    </div>
+                    <p style="text-align: center; margin: 5px 0 0 0;">准备开始访谈...</p>
+                </div>
+                """)
+
                 with gr.Row():
                     msg = gr.Textbox(
                         label="你的回答",
                         placeholder="请在此输入你的回答，按回车或点击发送...",
                         scale=5,
                         show_label=False,
-                        lines=2
+                        lines=2,
+                        max_lines=5
                     )
-                
+
                 with gr.Row():
                     submit_btn = gr.Button("📤 发送", variant="primary", scale=2)
                     skip_btn = gr.Button("⏭️ 跳过此题", variant="secondary", scale=1)
                     refresh_btn = gr.Button("🔄 重新开始", variant="secondary", scale=1)
+
+            with gr.Column(scale=1):
+                # 侧边栏 - 使用说明和统计
+                gr.Markdown("""
+                ### 📖 使用说明
+
+                欢迎参加访谈！本次访谈将围绕五育发展展开。
+
+                **操作提示**：
+                - 💬 在下方输入框输入回答
+                - ⏭️ 不方便回答可点击跳过
+                - 🔄 可随时重新开始
+
+                **访谈规则**：
+                - 共 6 个问题
+                - 涵盖学校、家庭、社区场景
+                - 包含德智体美劳五育内容
+                - AI会根据你的回答智能追问
+
+                ---
+
+                ### 💡 小贴士
+
+                回答时可以包含：
+                - ✨ 具体的经历和例子
+                - 💭 你的真实感受
+                - 📈 你的收获和改变
+                - 🔍 过程中的细节
+
+                回答越详细，AI追问会越精准！
+                """)
+
+                # 实时统计（如果可用）
+                stats_display = gr.Markdown("""
+                ### 📊 实时统计
+
+                *访谈开始后显示统计*
+                """)
         
         # 事件处理函数
         def init_handler():

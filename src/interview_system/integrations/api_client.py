@@ -12,8 +12,8 @@ import time
 from dataclasses import dataclass
 from typing import Optional, Dict, List
 
-import logger
-from config import BASE_DIR
+import interview_system.common.logger as logger
+from interview_system.common.config import BASE_DIR
 
 
 # ----------------------------

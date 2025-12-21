@@ -10,11 +10,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Dict, Optional, Tuple
 
-import logger
-from config import INTERVIEW_CONFIG
-from questions import TOPICS, SCENES, EDU_TYPES
-from api_client import generate_followup, is_api_available
-from session_manager import InterviewSession, get_session_manager
+import interview_system.common.logger as logger
+from interview_system.common.config import INTERVIEW_CONFIG
+from interview_system.core.questions import TOPICS, SCENES, EDU_TYPES
+from interview_system.integrations.api_client import generate_followup, is_api_available
+from interview_system.services.session_manager import InterviewSession, get_session_manager
 
 
 @dataclass
@@ -38,6 +38,7 @@ class InterviewEngine:
         # 如果会话没有选题，自动选题
         if not session.selected_topics:
             session.selected_topics = self.select_questions()
+            get_session_manager().update_session(session)
     
     def select_questions(self) -> List[Dict]:
         """
@@ -296,6 +297,7 @@ class InterviewEngine:
                 self.session.current_followup_is_ai = is_ai  # 保存追问类型
                 self.session.current_followup_count = 1  # 开始第一次追问
                 self.session.current_followup_question = followup_q  # 保存追问问题
+                get_session_manager().update_session(self.session)
                 result.need_followup = True
                 result.followup_question = followup_q
                 result.is_ai_generated = is_ai
@@ -333,6 +335,7 @@ class InterviewEngine:
                 self.session.current_followup_count += 1
                 self.session.current_followup_is_ai = is_ai
                 self.session.current_followup_question = followup_q  # 保存新的追问问题
+                get_session_manager().update_session(self.session)
                 result.need_followup = True
                 result.followup_question = followup_q
                 result.is_ai_generated = is_ai
@@ -343,12 +346,16 @@ class InterviewEngine:
             self.session.is_followup = False
             self.session.current_followup_count = 0
             self.session.current_followup_question = ""  # 清空追问问题
+            self.session.current_followup_is_ai = False
             return self._move_to_next_question(result)
     
     def _move_to_next_question(self, result: QuestionResult) -> QuestionResult:
         """移动到下一题"""
         self.session.current_question_idx += 1
         self.session.current_followup_count = 0  # 重置追问计数
+        self.session.current_followup_is_ai = False
+        self.session.current_followup_question = ""
+        self.session.is_followup = False
         
         if self.session.current_question_idx >= self.config.total_questions:
             self.session.is_finished = True
@@ -360,6 +367,8 @@ class InterviewEngine:
         else:
             result.next_question = self.get_current_question()
             result.message = "进入下一题"
+
+        get_session_manager().update_session(self.session)
         
         return result
     
@@ -392,6 +401,48 @@ class InterviewEngine:
             )
         
         self.session.is_followup = False
+        return self._move_to_next_question(result)
+
+    def skip_round(self) -> QuestionResult:
+        """
+        跳过本轮对话
+
+        语义：
+        - 若当前处于追问状态：跳过追问轮次并直接进入下一题
+        - 否则：等价于跳过当前题（核心题）
+
+        Returns:
+            处理结果
+        """
+        if not self.session.is_followup:
+            return self.skip_question()
+
+        result = QuestionResult()
+        current_topic = self.get_current_topic()
+
+        if current_topic:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            last_followup_q = getattr(self.session, 'current_followup_question', '（追问）')
+            log_entry = {
+                "timestamp": timestamp,
+                "topic": current_topic["name"],
+                "question_type": "追问跳过",
+                "question": last_followup_q,
+                "answer": "用户选择跳过追问",
+                "depth_score": 0,
+                "is_ai_generated": getattr(self.session, 'current_followup_is_ai', False)
+            }
+            get_session_manager().add_conversation_log(self.session.session_id, log_entry)
+
+            logger.log_interview(
+                self.session.session_id,
+                "跳过追问轮次",
+                {"topic": current_topic["name"]}
+            )
+
+        self.session.is_followup = False
+        self.session.current_followup_count = 0
+        self.session.current_followup_question = ""
         return self._move_to_next_question(result)
     
     def get_summary(self) -> Dict:

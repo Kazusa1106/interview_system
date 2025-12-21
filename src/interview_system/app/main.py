@@ -15,21 +15,24 @@
 - 支持命令行和Web两种模式
 """
 
-import sys
-import os
-
-# 确保模块路径正确
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-import logger
-from config import ensure_dirs
-from api_client import (
-    initialize_api, is_api_available, get_api_client,
-    get_available_providers
+import interview_system.common.logger as logger
+from interview_system.common.config import ensure_dirs
+from interview_system.integrations.api_client import (
+    initialize_api,
+    is_api_available,
+    get_api_client,
+    get_available_providers,
 )
-from session_manager import get_session_manager
-from interview_engine import create_interview
-from web_server import start_web_server, check_gradio_available
+from interview_system.services.session_manager import get_session_manager
+from interview_system.core.interview_engine import create_interview
+from interview_system.ui.web_ui import start_web_server, check_gradio_available
+
+# 尝试导入管理后台（可选）
+try:
+    from interview_system.ui.admin_ui import start_admin_server
+    ADMIN_AVAILABLE = True
+except ImportError:
+    ADMIN_AVAILABLE = False
 
 
 def setup_api_interactive():
@@ -273,6 +276,18 @@ def run_web_mode():
     start_web_server()
 
 
+def run_admin_mode():
+    """
+    运行管理后台模式
+    """
+    if not ADMIN_AVAILABLE:
+        print("❌ 无法启动管理后台：缺少必要模块")
+        print("请确保已安装: pip install gradio plotly")
+        return
+
+    start_admin_server()
+
+
 def main():
     """
     主入口函数
@@ -285,23 +300,26 @@ def main():
     print("║" + "探索德·智·体·美·劳，记录你的成长故事".center(42) + "║")
     print("║" + " " * 58 + "║")
     print("╚" + "═" * 58 + "╝")
-    
+
     # 确保目录存在
     ensure_dirs()
-    
+
     # 配置API
     setup_api_interactive()
-    
+
     # 选择模式
     print("\n" + "─" * 50)
     print("请选择启动模式：")
-    print("  1. 💻 命令行模式 - 在终端中进行访谈")
-    print("  2. 🌐 Web模式   - 生成网页链接，支持手机访问")
+    print("  1. 💻 命令行模式   - 在终端中进行访谈")
+    print("  2. 🌐 Web访谈模式  - 生成网页链接，支持手机访问")
+    print("  3. 🔧 管理后台模式 - 查看数据、统计分析")
     print("─" * 50)
     mode = input("请输入选项 [默认2]: ").strip()
-    
+
     if mode == "1":
         run_cli_mode()
+    elif mode == "3":
+        run_admin_mode()
     else:
         run_web_mode()
 

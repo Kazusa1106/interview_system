@@ -7,5 +7,8 @@ openai>=1.0.0          # 百度千帆API（兼容OpenAI SDK）
 gradio>=4.0.0          # Web界面框架
 qrcode[pil]>=7.0       # 二维码生成
 
+# 环境变量支持
+python-dotenv>=1.0.0
+
 # 可选依赖（已内置于Python标准库）
 # json, datetime, os, random, logging, threading, uuid, socket

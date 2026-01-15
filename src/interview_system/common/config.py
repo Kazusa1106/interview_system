@@ -12,7 +12,11 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from interview_system.common.paths import find_project_root
+
+load_dotenv()
 
 
 # ----------------------------
@@ -58,9 +62,9 @@ class InterviewConfig:
 class WebConfig:
     """Web服务配置"""
 
-    host: str = "0.0.0.0"
-    port: int = 7860
-    share: bool = True
+    host: str = os.getenv("WEB_HOST", "127.0.0.1")
+    port: int = int(os.getenv("WEB_PORT", "7860"))
+    share: bool = os.getenv("WEB_SHARE", "false").lower() == "true"
     title: str = "大学生五育并举访谈智能体"
     max_sessions: int = 100
     session_timeout: int = 3600
@@ -73,7 +77,7 @@ class WebConfig:
 class LogConfig:
     """日志配置"""
 
-    level: str = "INFO"
+    level: str = os.getenv("LOG_LEVEL", "INFO")
     log_to_file: bool = True
     log_to_console: bool = True
     log_format: str = "[%(asctime)s] [%(levelname)s] %(name)s: %(message)s"

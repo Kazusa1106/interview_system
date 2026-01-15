@@ -7,6 +7,7 @@ Unified API Client - Multi-provider LLM support
 import json
 import os
 import time
+from pathlib import Path
 from typing import Optional
 
 import interview_system.common.logger as logger
@@ -14,10 +15,44 @@ from interview_system.common.config import BASE_DIR
 from interview_system.integrations.api_providers import API_PROVIDERS, APIProviderConfig
 
 API_CONFIG_FILE = os.path.join(BASE_DIR, "api_config.json")
+ENV_FILE = os.path.join(BASE_DIR, ".env")
 
 # Token limits
 MAX_FOLLOWUP_TOKENS = 120
 TEST_CALL_TOKENS = 5
+
+
+def migrate_json_to_env() -> bool:
+    """Migrate api_config.json to .env file (one-time)"""
+    if not os.path.exists(API_CONFIG_FILE):
+        return False
+    if os.path.exists(ENV_FILE):
+        return False
+
+    try:
+        with open(API_CONFIG_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        env_lines = [
+            "# API Configuration (migrated from api_config.json)",
+            f"API_PROVIDER={data.get('provider_id', '')}",
+            f"API_KEY={data.get('api_key', '')}",
+            f"API_MODEL={data.get('model', '')}",
+        ]
+        if data.get("secret_key"):
+            env_lines.append(f"API_SECRET_KEY={data.get('secret_key', '')}")
+
+        with open(ENV_FILE, "w", encoding="utf-8") as f:
+            f.write("\n".join(env_lines) + "\n")
+
+        # Backup old file
+        backup_path = API_CONFIG_FILE + ".bak"
+        os.rename(API_CONFIG_FILE, backup_path)
+        logger.info(f"已迁移配置到 .env，原文件备份为 {backup_path}")
+        return True
+    except Exception as e:
+        logger.warning(f"迁移配置失败：{e}")
+        return False
 
 
 class UnifiedAPIClient:
@@ -37,7 +72,20 @@ class UnifiedAPIClient:
         self._load_config()
 
     def _load_config(self) -> bool:
-        """Load API config from file (no network validation)"""
+        """Load API config from env vars first, then file (backward compat)"""
+        # Priority 1: Environment variables
+        provider_id = os.getenv("API_PROVIDER")
+        api_key = os.getenv("API_KEY")
+
+        if provider_id and api_key and provider_id in API_PROVIDERS:
+            self.current_provider = API_PROVIDERS[provider_id]
+            self.api_key = api_key
+            self.secret_key = os.getenv("API_SECRET_KEY")
+            self.model = os.getenv("API_MODEL") or self.current_provider.default_model
+            logger.info(f"已从环境变量加载API配置：{self.current_provider.name}")
+            return True
+
+        # Priority 2: JSON file (backward compat)
         if not os.path.exists(API_CONFIG_FILE):
             return False
 
@@ -51,7 +99,7 @@ class UnifiedAPIClient:
                 self.api_key = data.get("api_key")
                 self.secret_key = data.get("secret_key")
                 self.model = data.get("model") or self.current_provider.default_model
-                logger.info(f"已加载API配置：{self.current_provider.name}")
+                logger.info(f"已从文件加载API配置：{self.current_provider.name}")
                 return True
         except Exception as e:
             logger.warning(f"加载API配置失败：{e}")
@@ -90,36 +138,62 @@ class UnifiedAPIClient:
             return False
 
     def save_config(self) -> bool:
-        """Save API config to file"""
+        """Save API config to .env file"""
         if not self.current_provider or not self.api_key:
             return False
 
         try:
-            import datetime
-            data = {
-                "provider_id": self.current_provider.provider_id,
-                "api_key": self.api_key,
-                "model": self.model,
-                "saved_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }
+            env_lines = []
+
+            # Read existing .env if present
+            if os.path.exists(ENV_FILE):
+                with open(ENV_FILE, "r", encoding="utf-8") as f:
+                    for line in f:
+                        # Skip API-related lines (will be rewritten)
+                        if not line.strip().startswith(("API_PROVIDER=", "API_KEY=", "API_MODEL=", "API_SECRET_KEY=")):
+                            env_lines.append(line.rstrip())
+
+            # Add API config
+            env_lines.extend([
+                "",
+                "# API Configuration",
+                f"API_PROVIDER={self.current_provider.provider_id}",
+                f"API_KEY={self.api_key}",
+                f"API_MODEL={self.model}",
+            ])
 
             if self.current_provider.need_secret_key and self.secret_key:
-                data["secret_key"] = self.secret_key
+                env_lines.append(f"API_SECRET_KEY={self.secret_key}")
 
-            with open(API_CONFIG_FILE, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
+            with open(ENV_FILE, "w", encoding="utf-8") as f:
+                f.write("\n".join(env_lines) + "\n")
 
-            logger.info(f"API配置已保存到：{API_CONFIG_FILE}")
+            logger.info(f"API配置已保存到：{ENV_FILE}")
             return True
         except Exception as e:
             logger.error(f"保存API配置失败：{e}")
             return False
 
     def clear_config(self):
-        """Clear saved config"""
+        """Clear saved config from both .env and legacy JSON"""
+        # Clear legacy JSON
         if os.path.exists(API_CONFIG_FILE):
             os.remove(API_CONFIG_FILE)
-            logger.info("已清除API配置")
+
+        # Clear API vars from .env
+        if os.path.exists(ENV_FILE):
+            try:
+                with open(ENV_FILE, "r", encoding="utf-8") as f:
+                    lines = [
+                        line for line in f
+                        if not line.strip().startswith(("API_PROVIDER=", "API_KEY=", "API_MODEL=", "API_SECRET_KEY="))
+                    ]
+                with open(ENV_FILE, "w", encoding="utf-8") as f:
+                    f.writelines(lines)
+            except Exception:
+                pass
+
+        logger.info("已清除API配置")
 
     def get_saved_provider(self) -> Optional[str]:
         """Get saved provider ID"""

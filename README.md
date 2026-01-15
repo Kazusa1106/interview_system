@@ -1,265 +1,289 @@
-# 🎓 大学生五育并举访谈智能体
+<div align="center">
 
-基于多种大模型API的智能访谈系统，支持多人同时在线访谈。
+# Interview System
 
-## ✨ 特性
+**AI-Powered Interview Platform for Holistic Education Assessment**
 
-### 核心功能
-- 🤖 **智能追问**：支持多种大模型API（DeepSeek、OpenAI、通义千问、智谱AI、百度千帆），根据回答内容生成针对性追问
-- 🔄 **多轮追问**：每题最多追问3次，根据回答深度动态决定是否继续追问
-- 🧠 **上下文感知**：AI追问结合用户之前的回答历史，追问更有针对性
-- 👥 **多人同时访谈**：支持多用户同时进行访谈，会话隔离
-- 📱 **双模式支持**：命令行交互 + Web扫码访问
+[![Python Version](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Status](https://img.shields.io/badge/status-active-success.svg)]()
 
-### 🆕 第一阶段优化新增功能 (v2.0)
-- 💾 **数据持久化**：使用SQLite数据库，所有访谈数据永久保存，服务重启不丢失
-- 📊 **数据可视化**：内置Plotly图表，支持饼图、柱状图、趋势图、统计仪表盘
-- 🔧 **管理后台**：全新管理界面，查看所有访谈、统计分析、数据导出
-- 📈 **实时统计**：访谈进度跟踪、场景/五育分布分析、完成率统计
-- 🎨 **界面优化**：渐变色设计、进度条显示、侧边栏指南、更好的用户体验
-- 📑 **HTML报告**：一键生成精美的HTML统计报告
+[Quick Start](#quick-start) • [Features](#features) • [Documentation](#documentation) • [Configuration](#configuration)
 
-## 📁 项目结构
+</div>
 
-```
-interview_system/
-├── interview_system/      # 运行期引导包（支持 python -m interview_system）
-├── src/
-│   └── interview_system/  # 真实实现（分层结构：app/ui/core/services/data/...）
-├── requirements.txt      # 依赖列表
-├── requirements-lock.txt # 精确版本依赖
-├── README.md             # 项目说明文档
-├── CLAUDE.md             # Claude Code项目配置
-├── interview_data.db     # 🆕 SQLite数据库（自动生成）
-├── api_config.json       # API配置（自动生成）
-├── docs/                 # 📚 文档目录
-│   ├── QUICKSTART.md     # 快速开始指南
-│   └── INSTALL_TEST.md   # 安装测试指南
-├── scripts/              # 🔧 脚本目录
-│   ├── start_web.bat     # Windows快速启动访谈界面
-│   ├── start_admin.bat   # Windows快速启动管理后台
-│   └── install_and_test.bat  # Windows一键安装测试
-├── exports/              # 导出的访谈记录（自动生成）
-└── logs/                 # 日志文件（自动生成）
-```
+---
 
-## 🚀 快速开始
+## Table of Contents
 
-### 环境要求
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [API Providers](#api-providers)
+- [Project Structure](#project-structure)
+- [Development](#development)
+- [License](#license)
 
-- **Python版本**: 3.8 - 3.11（不支持3.12+）
-- **操作系统**: Windows 10/11, macOS, Linux
+---
 
-### 检查Python版本
+## Features
+
+<table>
+<tr>
+<td width="50%">
+
+**Core Capabilities**
+- Multi-LLM support (DeepSeek, OpenAI, Qwen, GLM, ERNIE)
+- Dynamic follow-up questions (max 3 per question)
+- Context-aware AI responses
+- Multi-user concurrent sessions
+- CLI + Web interface
+
+</td>
+<td width="50%">
+
+**v2.0 Enhancements**
+- SQLite persistence
+- Plotly visualization
+- Admin dashboard
+- Real-time statistics
+- HTML report generation
+
+</td>
+</tr>
+</table>
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+- **Python**: 3.8 - 3.11 (3.12+ not supported)
+- **OS**: Windows 10/11, macOS, Linux
+
+### Check Python Version
 
 ```bash
-python --version
-# 或
-python3 --version
+python --version  # Must be 3.8-3.11
 ```
 
-**重要**: 如果版本是3.12+，请先安装Python 3.8-3.11版本：
-- [Python官方下载](https://www.python.org/downloads/)
-- Windows: 可从Microsoft Store安装Python 3.11
-- macOS: 使用pyenv管理多版本
-
-### 安装步骤
-
-#### 方法一：推荐（使用虚拟环境）
+### Install & Run
 
 ```bash
-# 1. 克隆项目
-git clone <项目地址>
+# Clone repository
+git clone https://github.com/username/interview_system.git
 cd interview_system
 
-# 2. 创建虚拟环境
+# Create virtual environment
 python -m venv venv
 
-# 3. 激活虚拟环境
-# Windows:
+# Activate (Windows)
 venv\Scripts\activate
-# Linux/macOS:
+# Activate (Linux/macOS)
 source venv/bin/activate
 
-# 4. 安装依赖
+# Install dependencies
 pip install -r requirements.txt
 
-# 5. 运行程序
+# Run application
 python -m interview_system
 ```
 
-### 🧪 自动化测试
+### Windows Quick Launch
+
+```bash
+scripts\install_and_test.bat  # Install & test
+scripts\start_web.bat         # Launch web interface
+scripts\start_admin.bat       # Launch admin dashboard
+```
+
+---
+
+## Installation
+
+<details>
+<summary><b>Method 1: Virtual Environment (Recommended)</b></summary>
+
+```bash
+python -m venv venv
+venv\Scripts\activate  # Windows
+source venv/bin/activate  # Linux/macOS
+pip install -r requirements.txt
+```
+
+</details>
+
+<details>
+<summary><b>Method 2: Direct Install</b></summary>
+
+```bash
+pip install -r requirements.txt
+```
+
+</details>
+
+<details>
+<summary><b>Dependency Conflicts</b></summary>
+
+Use locked versions if conflicts occur:
+
+```bash
+pip install -r requirements-lock.txt
+```
+
+</details>
+
+### Testing
 
 ```bash
 pip install -r requirements-dev.txt
 pytest -q
 ```
 
-#### 方法二：直接安装（不推荐）
+---
+
+## Configuration
+
+### API Providers
+
+| Provider | Model | API Key |
+|----------|-------|---------|
+| **DeepSeek** | `deepseek-chat` | [platform.deepseek.com](https://platform.deepseek.com/) |
+| **OpenAI** | `gpt-3.5-turbo` | [platform.openai.com](https://platform.openai.com/) |
+| **Qwen** | `qwen-turbo` | [dashscope.console.aliyun.com](https://dashscope.console.aliyun.com/) |
+| **GLM** | `glm-4-flash` | [open.bigmodel.cn](https://open.bigmodel.cn/) |
+| **ERNIE** | `ernie-3.5-8k` | [qianfan.baidubce.com](https://qianfan.baidubce.com/) |
+
+> Use `deepseek-chat`. R1 is for math/logic only.
+
+### Environment Variables
+
+Copy `.env.example` to `.env`:
 
 ```bash
-pip install -r requirements.txt
-python -m interview_system
+cp .env.example .env
 ```
 
-### 依赖冲突解决方案
+Edit `.env`:
 
-如果遇到依赖冲突问题，请使用以下命令安装精确版本：
+```ini
+# API Configuration
+API_PROVIDER=deepseek
+API_KEY=your_api_key_here
+API_MODEL=deepseek-chat
 
-```bash
-pip install -r requirements-lock.txt
+# Web Server
+WEB_HOST=127.0.0.1
+WEB_PORT=7860
+WEB_SHARE=false
 ```
 
-### 选择运行模式
+**Priority**: Environment variables > `.env` file > `api_config.json` (deprecated)
 
-启动程序后，可选择以下模式：
+### Security
 
-- 输入 `1`：💻 命令行交互模式
-- 输入 `2`（默认）：🌐 Web访谈模式，支持手机扫码访问
-- 输入 `3`：🔧 管理后台模式（新增）
+- **Never commit** `.env` or `api_config.json`
+- Use system environment variables in production
+- Rotate API keys regularly
+- `.gitignore` excludes sensitive files by default
 
-### 🆕 使用管理后台
+<details>
+<summary><b>Custom Configuration</b></summary>
 
-```bash
-# 方式1: 启动时选择模式3
-python -m interview_system
-# 然后输入 3
-
-# 方式2: 直接运行管理后台
-python -m interview_system.app.admin
-
-# 方式3: 使用快速启动脚本（Windows）
-scripts\start_admin.bat
-```
-
-管理后台功能：
-- 📊 **概览仪表盘**：总访谈数、完成率、趋势图
-- 📋 **会话列表**：查看所有访谈记录和详情
-- 📈 **统计分析**：生成可视化统计图表
-- 💾 **数据导出**：批量导出JSON、生成HTML报告
-- 🔍 **详情查看**：查看每次访谈的完整对话记录
-
-访问地址：`http://localhost:7861`
-
-### Windows 快速启动脚本
-
-项目提供了便捷的Windows批处理脚本：
-
-```bash
-# 一键安装和测试
-scripts\install_and_test.bat
-
-# 启动访谈界面
-scripts\start_web.bat
-
-# 启动管理后台
-scripts\start_admin.bat
-```
-
-## 🔧 配置说明
-
-### 支持的 API 提供商
-
-| 提供商 | 推荐模型 | 获取API Key |
-|--------|----------|-------------|
-| **DeepSeek** | deepseek-chat | [platform.deepseek.com](https://platform.deepseek.com/) |
-| **OpenAI** | gpt-3.5-turbo | [platform.openai.com](https://platform.openai.com/) |
-| **通义千问** | qwen-turbo | [dashscope.console.aliyun.com](https://dashscope.console.aliyun.com/) |
-| **智谱AI** | glm-4-flash | [open.bigmodel.cn](https://open.bigmodel.cn/) |
-| **百度千帆** | ernie-3.5-8k | [qianfan.baidubce.com](https://qianfan.baidubce.com/) |
-
-> ⚠️ **注意**：DeepSeek 请使用 `deepseek-chat` 模型，不要使用 `deepseek-reasoner` (R1)。R1 是推理模型，适合数学/逻辑任务，不适合对话场景，会导致追问内容异常。
-
-### API配置流程
-
-首次运行时，程序会引导你选择API提供商并输入密钥：
-
-```
-===== 智能追问 API 配置 =====
-
-支持的 API 提供商：
---------------------------------------------------
-  1. DeepSeek (深度求索)
-  2. OpenAI (ChatGPT)
-  3. 通义千问 (阿里)
-  4. 智谱AI (GLM)
-  5. 百度千帆 (文心一言)
-  0. 跳过配置（使用预设追问）
---------------------------------------------------
-
-请选择 API 提供商 [0-5]:
-```
-
-配置成功后会自动保存到 `api_config.json`，下次启动无需重复输入。
-
-### 修改配置参数
-
-编辑 `src/interview_system/common/config.py` 可调整：
+Edit `src/interview_system/common/config.py`:
 
 ```python
-# 访谈配置
 INTERVIEW_CONFIG = InterviewConfig(
-    total_questions=6,              # 每次访谈题目数
-    min_answer_length=15,           # 触发追问的最小回答长度
-    max_followups_per_question=3,   # 每题最大追问次数
-    max_depth_score=4               # 回答深度最高分（达到后不再追问）
+    total_questions=6,              # Questions per interview
+    min_answer_length=15,           # Min length to trigger follow-up
+    max_followups_per_question=3,   # Max follow-ups per question
+    max_depth_score=4               # Max depth score (stops follow-ups)
 )
 
-# Web服务配置
 WEB_CONFIG = WebConfig(
-    port=7860,                  # 服务端口
-    share=True,                 # 是否生成公网链接
-    max_sessions=100            # 最大同时会话数
+    host="127.0.0.1",
+    port=7860,
+    share=False,
+    max_sessions=100
 )
 ```
 
-## 📋 访谈规则
+</details>
 
-- **题目数量**：每次随机抽取 6 题
-- **覆盖要求**：确保覆盖学校、家庭、社区三场景 + 德、智、体、美、劳五育
-- **追问机制**：
-  - 回答过短（<15字）：自动追问，引导补充
-  - 回答深度不足：AI智能追问，挖掘细节和感受
-  - 每题最多追问 3 次，根据回答深度动态调整
-  - 回答详细且有深度（深度分≥4）：直接进入下一题
-- **AI追问特点**：
-  - 结合用户之前的回答历史，避免重复追问
-  - 追问与当前五育主题相关
-  - 口语化表达，像朋友聊天一样自然
+---
 
-## 💡 使用指令
+## Usage
 
-### 命令行模式
+### Run Modes
 
-| 指令 | 说明 |
-|------|------|
-| `跳过` | 跳过当前问题 |
-| `导出` | 导出当前访谈日志 |
-| `结束` | 结束访谈 |
+```bash
+python -m interview_system
+```
 
-### Web模式
+Select mode:
+- `1`: CLI interactive mode
+- `2`: Web mode (default) - QR code for mobile access
+- `3`: Admin dashboard
 
-| 操作 | 说明 |
-|------|------|
-| 「⏭️ 跳过」按钮 | 跳过当前问题 |
-| 「🔄 开始新访谈」按钮 | 重新开始一次访谈 |
+### Admin Dashboard
 
-> 注：Web模式下访谈结束会自动导出日志到 `exports/` 目录
+```bash
+# Method 1: Select mode 3 at startup
+python -m interview_system
 
-## 📊 导出格式
+# Method 2: Direct launch
+python -m interview_system.app.admin
 
-访谈记录导出为 JSON 格式，包含：
+# Method 3: Windows script
+scripts\start_admin.bat
+```
+
+**Access**: `http://localhost:7861`
+
+**Features**:
+- Overview dashboard (total interviews, completion rate, trends)
+- Session list (view all interviews and details)
+- Statistical analysis (visualizations, distributions)
+- Data export (JSON batch export, HTML reports)
+- Detail view (complete conversation logs)
+
+### Commands
+
+**CLI Mode**:
+| Command | Action |
+|---------|--------|
+| `跳过` | Skip current question |
+| `导出` | Export interview log |
+| `结束` | End interview |
+
+**Web Mode**:
+| Button | Action |
+|--------|--------|
+| 跳过 | Skip current question |
+| 开始新访谈 | Start new interview |
+
+> Auto-exports to `exports/` on completion
+
+---
+
+## Data & Reports
+
+### Export Format
 
 ```json
 {
   "session_id": "abc12345",
-  "user_name": "访谈者",
+  "user_name": "Interviewee",
   "start_time": "2025-12-03 10:00:00",
   "end_time": "2025-12-03 10:30:00",
   "statistics": {
     "total_logs": 8,
+    "completion_rate": 100,
     "scene_distribution": {"学校": 3, "家庭": 2, "社区": 3},
-    "edu_distribution": {"德育": 2, "智育": 1, ...},
+    "edu_distribution": {"德育": 2, "智育": 1, "体育": 2, "美育": 1, "劳育": 2},
     "followup_distribution": {"预设追问": 1, "AI智能追问": 2}
   },
   "conversation_log": [
@@ -275,32 +299,82 @@ WEB_CONFIG = WebConfig(
 }
 ```
 
-## 🛠️ 开发说明
+### Visualization
 
-### 模块依赖关系
+Built-in Plotly charts:
+- Pie charts: Scene/education distribution
+- Bar charts: Follow-up type statistics
+- Line charts: Interview volume trends
+- Dashboards: Comprehensive statistics
+
+### HTML Reports
+
+Generate visual reports from admin dashboard:
+- Beautiful chart displays
+- Complete statistics
+- Browser-ready
+- Shareable
+
+---
+
+## Project Structure
+
+```
+interview_system/
+├── interview_system/          # Bootstrap package (python -m entry)
+├── src/
+│   └── interview_system/      # Core implementation
+│       ├── app/               # Application layer
+│       ├── ui/                # User interfaces
+│       ├── core/              # Business logic
+│       ├── services/          # Services
+│       ├── data/              # Data layer
+│       ├── integrations/      # External APIs
+│       ├── reports/           # Reporting & visualization
+│       └── common/            # Shared utilities
+├── docs/                      # Documentation
+│   ├── QUICKSTART.md
+│   └── INSTALL_TEST.md
+├── scripts/                   # Utility scripts
+│   ├── start_web.bat
+│   ├── start_admin.bat
+│   └── install_and_test.bat
+├── exports/                   # Exported interviews (auto-generated)
+├── logs/                      # Log files (auto-generated)
+├── requirements.txt           # Dependencies
+├── requirements-lock.txt      # Locked versions
+├── .env.example               # Environment template
+└── interview_data.db          # SQLite database (auto-generated)
+```
+
+---
+
+## Development
+
+### Module Dependencies
 
 ```
 python -m interview_system
-  └── interview_system/app/main.py (交互式入口)
-        ├── interview_system/ui/web_ui.py (Web 访谈端)
-        ├── interview_system/ui/admin_ui.py (管理后台)
-        ├── interview_system/core/interview_engine.py (访谈引擎)
-        │     ├── interview_system/core/questions.py
-        │     ├── interview_system/integrations/api_client.py
-        │     └── interview_system/services/session_manager.py
-        │           └── interview_system/data/database.py
-        └── interview_system/common/config.py + interview_system/common/logger.py
+  └── app/main.py
+        ├── ui/web_ui.py (Web interface)
+        ├── ui/admin_ui.py (Admin dashboard)
+        ├── core/interview_engine.py
+        │     ├── core/questions.py
+        │     ├── integrations/api_client.py
+        │     └── services/session_manager.py
+        │           └── data/database.py
+        └── common/config.py + common/logger.py
 ```
 
-### 添加新的API提供商
+### Add API Provider
 
-编辑 `src/interview_system/integrations/api_client.py`，在 `API_PROVIDERS` 字典中添加：
+Edit `src/interview_system/integrations/api_client.py`:
 
 ```python
 "new_provider": APIProviderConfig(
-    name="新提供商名称",
+    name="Provider Name",
     provider_id="new_provider",
-    base_url="https://api.example.com/v1",  # OpenAI兼容格式
+    base_url="https://api.example.com/v1",  # OpenAI-compatible
     default_model="model-name",
     api_key_name="API Key",
     models=["model-1", "model-2"],
@@ -308,108 +382,53 @@ python -m interview_system
 )
 ```
 
-> 注：大多数国产API都兼容OpenAI接口格式，只需修改 base_url 和模型名称即可。
+### Extend Questions
 
-### 扩展题目
-
-编辑 `src/interview_system/core/questions.py`，按以下格式添加话题：
+Edit `src/interview_system/core/questions.py`:
 
 ```python
 {
-    "name": "场景-育类型",       # 如 "学校-德育"
+    "name": "场景-育类型",
     "scene": "场景",            # 学校/家庭/社区
     "edu_type": "育类型",       # 德育/智育/体育/美育/劳育
     "intro": "话题介绍",
     "questions": ["核心问题"],
-    "scenarios": [],            # 情景（可选）
+    "scenarios": [],            # Optional
     "followups": ["预设追问1", "预设追问2"]
 }
 ```
 
-## 🆕 新功能使用指南 (v2.0)
+### Interview Rules
 
-### 数据持久化
+- **Questions**: 6 random questions per interview
+- **Coverage**: Ensures 3 scenes (学校/家庭/社区) + 5 education types (德智体美劳)
+- **Follow-up Logic**:
+  - Answer too short (<15 chars): Auto follow-up
+  - Insufficient depth: AI follow-up
+  - Max 3 follow-ups per question
+  - Depth score ≥4: Skip to next question
+- **AI Follow-up**:
+  - Context-aware (uses answer history)
+  - Topic-relevant
+  - Conversational tone
 
-所有访谈数据自动保存到SQLite数据库（`interview_data.db`），服务重启后数据不丢失。
+---
 
-**数据库包含**：
-- 所有历史会话信息
-- 完整的对话日志
-- 统计分析数据
-
-**备份建议**：定期备份 `interview_data.db` 文件
-
-### 数据可视化
-
-系统内置Plotly图表库，支持多种可视化形式：
-
-```python
-# 在管理后台中
-from interview_system.reports.visualization import DataVisualizer
-from interview_system.services.session_manager import get_session_manager
-
-# 获取统计数据
-stats = get_session_manager().get_statistics()
-
-# 创建可视化图表
-viz = DataVisualizer()
-dashboard = viz.create_statistics_dashboard(stats)
-
-# 生成HTML报告
-viz.generate_html_report(stats, daily_stats, "report.html")
-```
-
-**支持的图表类型**：
-- 饼图：场景分布、五育分布
-- 柱状图：追问类型统计
-- 折线图：访谈量趋势
-- 仪表盘：综合统计展示
-
-### 管理后台API
-
-管理后台提供完整的数据管理功能：
-
-**概览功能**：
-- 实时显示总访谈数、完成率
-- 最近N天趋势图
-- 生成可视化统计报告
-
-**会话管理**：
-- 查看所有访谈列表
-- 查看单次访谈详情
-- 导出指定会话
-- 批量导出所有会话
-
-**统计分析**：
-- 按日期范围筛选统计
-- 场景/五育分布分析
-- AI追问效果分析
-- 生成HTML统计报告
-
-### 数据导出格式
-
-**JSON格式**（程序化处理）：
-```json
-{
-  "session_id": "abc12345",
-  "user_name": "访谈者",
-  "statistics": {
-    "total_logs": 8,
-    "completion_rate": 100,
-    "scene_distribution": {"学校": 3, "家庭": 2, "社区": 3},
-    "edu_distribution": {"德育": 2, "智育": 2, ...}
-  },
-  "conversation_log": [...]
-}
-```
-
-**HTML格式**（可视化报告）：
-- 精美的图表展示
-- 完整的统计信息
-- 可直接在浏览器打开
-- 适合分享和演示
-
-## 📄 License
+## License
 
 MIT License
 
+---
+
+## Contributing
+
+Contributions welcome. Follow existing code style (Hemingway principles: terse, high-signal).
+
+---
+
+## Documentation
+
+- [Quick Start Guide](docs/QUICKSTART.md)
+- [Installation & Testing](docs/INSTALL_TEST.md)
+
+---

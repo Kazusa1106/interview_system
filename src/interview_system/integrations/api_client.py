@@ -13,6 +13,9 @@ from typing import Optional
 import interview_system.common.logger as logger
 from interview_system.common.config import BASE_DIR
 from interview_system.integrations.api_providers import API_PROVIDERS, APIProviderConfig
+from interview_system.integrations.prompt_builder import PromptBuilder
+from interview_system.integrations.response_parser import ResponseParser
+from interview_system.integrations.prompt_templates import FOLLOWUP_SYSTEM_PROMPT
 
 API_CONFIG_FILE = os.path.join(BASE_DIR, "api_config.json")
 ENV_FILE = os.path.join(BASE_DIR, ".env")
@@ -190,8 +193,8 @@ class UnifiedAPIClient:
                     ]
                 with open(ENV_FILE, "w", encoding="utf-8") as f:
                     f.writelines(lines)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"清除.env中API配置失败: {e}")
 
         logger.info("已清除API配置")
 
@@ -209,25 +212,56 @@ class UnifiedAPIClient:
         model: str = None
     ) -> bool:
         """Initialize API client with credentials"""
-        if provider_id not in API_PROVIDERS:
-            logger.error(f"不支持的API提供商：{provider_id}")
+        provider = self._validate_credentials(provider_id, api_key, secret_key)
+        if not provider:
             return False
 
+        client = self._create_client(provider, api_key, secret_key)
+        if not client:
+            return False
+
+        target_model = model or provider.default_model
+        if not self._test_connection(client, target_model, provider.name):
+            self.clear_config()
+            return False
+
+        self._set_active_state(client, provider, api_key, secret_key, target_model)
+        return True
+
+    def _set_active_state(self, client, provider, api_key: str, secret_key: str, model: str):
+        """Set active client state"""
+        self.client = client
+        self.current_provider = provider
+        self.api_key = api_key
+        self.secret_key = secret_key
+        self.model = model
+        self.is_available = True
+        logger.info(f"{provider.name} 智能追问功能已启用，模型：{model}")
+
+    def _validate_credentials(self, provider_id: str, api_key: str, secret_key: str):
+        """Validate provider and credentials"""
+        if provider_id not in API_PROVIDERS:
+            logger.error(f"不支持的API提供商：{provider_id}")
+            return None
+
+        if not api_key:
+            logger.warning("API Key 不能为空")
+            return None
+
+        provider = API_PROVIDERS[provider_id]
+        if provider.need_secret_key and not secret_key:
+            logger.warning(f"{provider.name} 需要 Secret Key")
+            return None
+
+        return provider
+
+    def _create_client(self, provider, api_key: str, secret_key: str):
+        """Create OpenAI client instance"""
         try:
             import openai
         except ImportError:
             logger.error("未安装 openai 库，请运行 `pip install openai>=1.0.0` 安装")
-            return False
-
-        provider = API_PROVIDERS[provider_id]
-
-        if not api_key:
-            logger.warning("API Key 不能为空")
-            return False
-
-        if provider.need_secret_key and not secret_key:
-            logger.warning(f"{provider.name} 需要 Secret Key")
-            return False
+            return None
 
         try:
             client_kwargs = {
@@ -236,32 +270,26 @@ class UnifiedAPIClient:
                 "timeout": self.timeout,
             }
 
-            if provider_id == "baidu":
+            if provider.provider_id == "baidu" and secret_key:
                 client_kwargs["default_headers"] = {"X-Bce-Signature-Key": secret_key}
 
-            self.client = openai.OpenAI(**client_kwargs)
+            return openai.OpenAI(**client_kwargs)
+        except Exception as e:
+            logger.error(f"创建客户端失败：{e}")
+            return None
 
-            test_model = model or provider.default_model
-            self.client.chat.completions.create(
-                model=test_model,
+    def _test_connection(self, client, model: str, provider_name: str) -> bool:
+        """Test API connection with a simple call"""
+        try:
+            client.chat.completions.create(
+                model=model,
                 messages=[{"role": "user", "content": "hi"}],
                 max_tokens=TEST_CALL_TOKENS
             )
-
-            self.current_provider = provider
-            self.api_key = api_key
-            self.secret_key = secret_key
-            self.model = model or provider.default_model
-            self.is_available = True
-
-            logger.info(f"{provider.name} 智能追问功能已启用，模型：{self.model}")
             return True
-
         except Exception as e:
-            error_msg = str(e)
-            logger.error(f"{provider.name} 配置失败：{error_msg}")
+            logger.error(f"{provider_name} 配置失败：{e}")
             self.is_available = False
-            self.clear_config()
             return False
 
     def generate_followup(
@@ -281,85 +309,8 @@ class UnifiedAPIClient:
         if len(valid_answer) < 2:
             return None
 
-        prompt = self._build_followup_prompt(valid_answer, topic, conversation_log)
+        prompt = PromptBuilder.build_followup_prompt(valid_answer, topic, conversation_log)
         return self._call_with_retry(prompt, topic)
-
-    def _build_followup_prompt(
-        self,
-        answer: str,
-        topic: dict,
-        conversation_log: list = None
-    ) -> str:
-        """Build prompt for followup generation"""
-        topic_name = topic.get("name", "")
-        scene, edu_type = topic_name.split("-") if "-" in topic_name else ("", "")
-        original_question = topic.get("questions", [""])[0]
-
-        history_context = self._build_history_context(conversation_log, topic_name)
-        tone_guide = self._get_tone_by_edu_type(edu_type)
-
-        return f"""你是一位专业的访谈记者，正在对大学生进行关于"五育并举"主题的深度访谈。
-
-【访谈主题】{edu_type}（{scene}场景）
-【核心问题】{original_question}
-{history_context}
-
-【受访者最新回答】
-{answer}
-
-【追问要求】
-你的追问必须围绕上述【核心问题】展开，紧扣"{edu_type}"主题，从以下角度深入（选择最合适的一个）：
-
-1. 与{edu_type}的关联：这个经历如何体现或影响了{edu_type}方面的发展？
-2. 原因与动机：是什么促使做出这个选择或采取这个行动？
-3. 影响与改变：这个经历带来了什么收获或改变？
-
-【语气风格】
-{tone_guide}
-
-【重要规范】
-- 追问必须与【核心问题】相关，不要偏离主题
-- 参考【对话历史】避免重复已经问过的内容
-- 如果受访者回答偏题，温和地引导回{edu_type}主题
-- 每次只问一个具体问题，不要空泛地说"能具体说说吗"
-- 采用记者采访的专业风格，正式但亲和
-
-直接输出追问问题，不要任何前缀或解释。"""
-
-    def _build_history_context(self, conversation_log: list, topic_name: str) -> str:
-        """Build conversation history context"""
-        if not conversation_log:
-            return ""
-
-        topic_logs = [log for log in conversation_log if log.get("topic") == topic_name]
-        if not topic_logs:
-            return ""
-
-        history_parts = []
-        for log in topic_logs:
-            q_type = log.get("question_type", "")
-            q_text = log.get("question", "")
-            ans = log.get("answer", "")
-
-            if "核心" in q_type:
-                history_parts.append(f"【核心问题】{q_text}\n【回答】{ans}")
-            elif "追问" in q_type:
-                history_parts.append(f"【追问{len(history_parts)}】{q_text}\n【回答】{ans}")
-
-        if history_parts:
-            return "\n\n【对话历史】\n" + "\n\n".join(history_parts)
-        return ""
-
-    def _get_tone_by_edu_type(self, edu_type: str) -> str:
-        """Get tone guide by education type"""
-        tone_map = {
-            "德育": "正式而有深度，关注价值观和道德判断。示例：'您认为这个经历对您的价值观产生了怎样的影响？'",
-            "智育": "理性而专业，关注学习过程和思维发展。示例：'这种学习方法对您的思维能力有什么具体帮助？'",
-            "体育": "务实而积极，关注身体素质和运动习惯。示例：'坚持这项运动对您的身心状态有什么改变？'",
-            "美育": "细腻而有感染力，关注审美体验和艺术感悟。示例：'这次艺术体验让您对美有了什么新的认识？'",
-            "劳育": "朴实而真诚，关注实践能力和劳动价值。示例：'这次劳动经历让您对动手实践有了什么新的理解？'"
-        }
-        return tone_map.get(edu_type, "专业而亲和，像记者采访一样")
 
     def _call_with_retry(self, prompt: str, topic: dict) -> Optional[str]:
         """API call with retry mechanism"""
@@ -371,7 +322,7 @@ class UnifiedAPIClient:
                 response = self.client.chat.completions.create(
                     model=self.model,
                     messages=[
-                        {"role": "system", "content": "你是一位专业的访谈记者，正在进行大学生五育发展主题访谈。你的追问要紧扣访谈主题，专业而有深度。只输出追问问题本身，不要有任何前缀、解释或多余内容。"},
+                        {"role": "system", "content": FOLLOWUP_SYSTEM_PROMPT},
                         {"role": "user", "content": prompt.strip()}
                     ],
                     max_tokens=MAX_FOLLOWUP_TOKENS,
@@ -379,16 +330,25 @@ class UnifiedAPIClient:
                     n=1
                 )
 
-                duration = time.time() - start_time
-                return self._extract_followup(response, topic, duration)
+                elapsed_ms = int((time.time() - start_time) * 1000)
+                logger.log_api_call("generate_followup", True, elapsed_ms / 1000)
+                logger.info(
+                    f"API调用成功: {self.current_provider.name}",
+                    extra={
+                        "provider": self.current_provider.name,
+                        "model": self.model,
+                        "elapsed_ms": elapsed_ms
+                    }
+                )
+                return ResponseParser.extract_followup(response, topic, elapsed_ms / 1000)
 
             except Exception as e:
-                duration = time.time() - start_time
+                elapsed_ms = int((time.time() - start_time) * 1000)
                 last_error = str(e)
                 logger.log_api_call(
                     "generate_followup",
                     False,
-                    duration,
+                    elapsed_ms / 1000,
                     f"第{attempt + 1}次尝试失败: {last_error[:50]}"
                 )
 
@@ -399,68 +359,3 @@ class UnifiedAPIClient:
 
         logger.error(f"API调用失败，已重试{self.max_retries}次: {last_error}")
         return None
-
-    def _extract_followup(self, response, topic: dict, duration: float) -> Optional[str]:
-        """Extract followup question from API response"""
-        if not response or not response.choices:
-            logger.log_api_call("generate_followup", True, duration, "API响应无choices")
-            return None
-
-        choice = response.choices[0]
-        follow_question = ""
-
-        if hasattr(choice, 'message') and choice.message:
-            if hasattr(choice.message, 'content') and choice.message.content:
-                follow_question = choice.message.content.strip()
-
-            if not follow_question and hasattr(choice.message, 'reasoning_content'):
-                follow_question = self._extract_from_reasoning(choice.message.reasoning_content)
-
-        if not follow_question:
-            logger.log_api_call("generate_followup", True, duration, "API返回内容为空")
-            return None
-
-        follow_question = self._clean_followup(follow_question)
-
-        if not self._validate_followup(follow_question, topic):
-            logger.log_api_call("generate_followup", True, duration, f"生成内容不符合要求: {follow_question[:50]}")
-            return None
-
-        logger.log_api_call("generate_followup", True, duration)
-        logger.debug(f"AI生成追问成功: {follow_question}")
-        return follow_question
-
-    def _extract_from_reasoning(self, reasoning: str) -> str:
-        """Extract conclusion from reasoning content (DeepSeek R1)"""
-        if not reasoning:
-            return ""
-        lines = reasoning.strip().split('\n')
-        for line in reversed(lines):
-            line = line.strip()
-            if line and len(line) >= 5 and not line.startswith(('<', '【', '```')):
-                return line
-        return ""
-
-    def _clean_followup(self, text: str) -> str:
-        """Clean followup text"""
-        prefixes = ["追问：", "追问:", "问：", "问:", "**追问**：", "**追问**:"]
-        for prefix in prefixes:
-            if text.startswith(prefix):
-                text = text[len(prefix):].strip()
-
-        if text.startswith('"') and text.endswith('"'):
-            text = text[1:-1].strip()
-        if text.startswith('"') and text.endswith('"'):
-            text = text[1:-1].strip()
-
-        return text
-
-    def _validate_followup(self, followup: str, topic: dict) -> bool:
-        """Validate followup quality"""
-        if not followup or len(followup) < 5:
-            return False
-
-        preset_follows = topic.get("followups", [])
-        original_question = topic.get("questions", [""])[0]
-
-        return followup not in original_question and followup not in preset_follows

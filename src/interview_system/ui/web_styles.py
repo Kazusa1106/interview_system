@@ -1,5 +1,10 @@
 """WeChat-style CSS for Gradio interface"""
 
+def get_custom_css() -> str:
+    """Return custom CSS for Gradio interface."""
+    return WECHAT_CSS
+
+
 WECHAT_CSS = """
 :root {
     --wechat-bg: #f5f5f5;
@@ -83,19 +88,6 @@ WECHAT_CSS = """
     padding: 10px 12px;
     margin-top: 10px;
     box-shadow: var(--wechat-shadow);
-}
-.progress-bar {
-    background: #ededed;
-    border-radius: 999px;
-    height: 10px;
-    margin: 8px 0;
-    overflow: hidden;
-}
-.progress-fill {
-    background: var(--wechat-green);
-    height: 100%;
-    border-radius: 999px;
-    transition: width 0.3s ease;
 }
 
 #wechat_input_bar {

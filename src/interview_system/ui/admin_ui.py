@@ -394,8 +394,6 @@ def start_admin_server(port: int = None):
     """
     if not GRADIO_AVAILABLE:
         logger.error("无法启动管理后台：缺少 gradio 库")
-        print("❌ 无法启动管理后台：缺少 gradio 库")
-        print("请先运行: pip install gradio plotly")
         return
 
     demo = create_admin_interface()
@@ -417,8 +415,7 @@ def start_admin_server(port: int = None):
             prevent_thread_lock=False
         )
     except Exception as e:
-        logger.error(f"启动管理后台失败: {e}")
-        print(f"❌ 启动失败: {e}")
+        logger.error("启动管理后台失败", extra={"error": str(e)}, exc_info=True)
 
 
 if __name__ == "__main__":

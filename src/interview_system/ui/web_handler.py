@@ -6,7 +6,8 @@ Handles web interview session logic
 """
 
 import copy
-from typing import List, Optional, Tuple
+from collections import deque
+from typing import Deque, List, Optional, Tuple
 
 import interview_system.common.logger as logger
 from interview_system.core.interview_engine import InterviewEngine, create_interview
@@ -28,7 +29,7 @@ class InterviewHandler:
         self.session: Optional[InterviewSession] = None
         self.engine: Optional[InterviewEngine] = None
         self._initialized = False
-        self._undo_stack = []
+        self._undo_stack: Deque[dict] = deque(maxlen=10)
 
     def _capture_session_state(self) -> dict:
         """Capture session state snapshot for rollback"""
@@ -78,8 +79,8 @@ class InterviewHandler:
         )
 
         history = [
-            [None, welcome],
-            [None, first_question]
+            {"role": "assistant", "content": welcome},
+            {"role": "assistant", "content": first_question}
         ]
 
         logger.log_interview(
@@ -114,7 +115,8 @@ class InterviewHandler:
             return history, "", gr.update() if GRADIO_AVAILABLE else {}
 
         if self.session.is_finished:
-            history.append([user_input, "访谈已结束，请点击下方按钮开始新访谈。"])
+            history.append({"role": "user", "content": user_input})
+            history.append({"role": "assistant", "content": "访谈已结束，请点击下方按钮开始新访谈。"})
             return history, "", gr.update(interactive=False) if GRADIO_AVAILABLE else {}
 
         if not user_input.strip():
@@ -128,20 +130,20 @@ class InterviewHandler:
         self._push_undo_snapshot(history, submitted_text=user_input)
         result = self.engine.process_answer(user_input)
 
-        history.append([user_input, None])
+        history.append({"role": "user", "content": user_input})
 
         if result.need_followup:
             prefix = "💡 " if result.is_ai_generated else "📝 "
-            history[-1][1] = "收到。"
-            history.append([None, f"{prefix}{result.followup_question}"])
+            history.append({"role": "assistant", "content": "收到。"})
+            history.append({"role": "assistant", "content": f"{prefix}{result.followup_question}"})
         elif result.is_finished:
             self.export_log()
-            history[-1][1] = "收到。"
-            history.append([None, "🎉 访谈结束！感谢你的参与。"])
+            history.append({"role": "assistant", "content": "收到。"})
+            history.append({"role": "assistant", "content": "🎉 访谈结束！感谢你的参与。"})
             return history, "", gr.update(interactive=False) if GRADIO_AVAILABLE else {}
         else:
-            history[-1][1] = "✅ 收到，进入下一题。"
-            history.append([None, result.next_question])
+            history.append({"role": "assistant", "content": "✅ 收到，进入下一题。"})
+            history.append({"role": "assistant", "content": result.next_question})
 
         return history, "", gr.update() if GRADIO_AVAILABLE else {}
 
@@ -151,17 +153,18 @@ class InterviewHandler:
         self._push_undo_snapshot(history, submitted_text="")
         result = self.engine.skip_round()
 
+        history.append({"role": "user", "content": user_input})
         if was_followup:
-            history.append([user_input, "好的，已跳过本轮追问。"])
+            history.append({"role": "assistant", "content": "好的，已跳过本轮追问。"})
         else:
-            history.append([user_input, "好的，已跳过当前问题。"])
+            history.append({"role": "assistant", "content": "好的，已跳过当前问题。"})
 
         if result.is_finished:
             self.export_log()
-            history.append([None, "🎉 访谈结束！感谢你的参与。"])
+            history.append({"role": "assistant", "content": "🎉 访谈结束！感谢你的参与。"})
             return history, "", gr.update(interactive=False) if GRADIO_AVAILABLE else {}
 
-        history.append([None, result.next_question])
+        history.append({"role": "assistant", "content": result.next_question})
         return history, "", gr.update() if GRADIO_AVAILABLE else {}
 
     def skip_round(self, history: List) -> Tuple[List, str, dict]:
@@ -175,7 +178,7 @@ class InterviewHandler:
             return history, "", gr.update() if GRADIO_AVAILABLE else {}
 
         if self.session.is_finished:
-            history.append([None, "访谈已结束，请点击下方按钮开始新访谈。"])
+            history.append({"role": "assistant", "content": "访谈已结束，请点击下方按钮开始新访谈。"})
             return history, "", gr.update(interactive=False) if GRADIO_AVAILABLE else {}
 
         was_followup = self.session.is_followup
@@ -183,17 +186,17 @@ class InterviewHandler:
         result = self.engine.skip_round()
 
         if was_followup:
-            history.append([None, "好的，已跳过本轮追问。"])
+            history.append({"role": "assistant", "content": "好的，已跳过本轮追问。"})
         else:
-            history.append([None, "好的，已跳过当前问题。"])
+            history.append({"role": "assistant", "content": "好的，已跳过当前问题。"})
 
         if result.is_finished:
             self.export_log()
-            history.append([None, "🎉 访谈结束！感谢你的参与。"])
+            history.append({"role": "assistant", "content": "🎉 访谈结束！感谢你的参与。"})
             return history, "", gr.update(interactive=False, value="") if GRADIO_AVAILABLE else {}
 
         if result.next_question:
-            history.append([None, result.next_question])
+            history.append({"role": "assistant", "content": result.next_question})
         return history, "", gr.update(value="") if GRADIO_AVAILABLE else {}
 
     def undo_last(self, history: List) -> Tuple[List, str, dict]:
@@ -207,7 +210,7 @@ class InterviewHandler:
             return history, "", gr.update() if GRADIO_AVAILABLE else {}
 
         if not self._undo_stack:
-            history.append([None, "暂无可撤回内容。"])
+            history.append({"role": "assistant", "content": "暂无可撤回内容。"})
             return history, "", gr.update() if GRADIO_AVAILABLE else {}
 
         snapshot = self._undo_stack[-1]
@@ -221,7 +224,7 @@ class InterviewHandler:
             session_state=session_state
         )
         if not ok:
-            history.append([None, "撤回失败：数据回滚未成功，请稍后重试。"])
+            history.append({"role": "assistant", "content": "撤回失败：数据回滚未成功，请稍后重试。"})
             return history, "", gr.update() if GRADIO_AVAILABLE else {}
 
         self._undo_stack.pop()

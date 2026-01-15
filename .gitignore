@@ -65,3 +65,7 @@ site/
 # Local
 helloagents/
 llmdoc/
+.claude/
+
+# Gradio
+.gradio/

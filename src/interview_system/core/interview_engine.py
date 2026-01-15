@@ -6,6 +6,7 @@ Delegates answer processing and followup generation
 """
 
 import random
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Dict, Optional, Tuple
@@ -14,6 +15,7 @@ import interview_system.common.logger as logger
 from interview_system.common.config import INTERVIEW_CONFIG
 from interview_system.core.answer_processor import AnswerProcessor
 from interview_system.core.followup_generator import FollowupGenerator
+from interview_system.core.question_selector import QuestionSelector
 from interview_system.core.questions import TOPICS, SCENES, EDU_TYPES
 from interview_system.integrations.api_helpers import is_api_available
 from interview_system.services.session_manager import InterviewSession, get_session_manager
@@ -38,63 +40,20 @@ class InterviewEngine:
         self.config = INTERVIEW_CONFIG
         self.answer_processor = AnswerProcessor()
         self.followup_generator = FollowupGenerator()
+        self.question_selector = QuestionSelector()
 
         if not session.selected_topics:
             session.selected_topics = self.select_questions()
             get_session_manager().update_session(session)
     
     def select_questions(self) -> List[Dict]:
-        """
-        选择访谈问题
-        规则：随机选6题，覆盖学校/家庭/社区三场景 + 德/智/体/美/劳五育
-        
-        Returns:
-            选中的话题列表
-        """
-        # 按场景分组
-        scene_groups = {scene: [] for scene in SCENES}
-        for topic in TOPICS:
-            scene_groups[topic["scene"]].append(topic)
-        
-        # 按五育分组
-        edu_groups = {edu: [] for edu in EDU_TYPES}
-        for topic in TOPICS:
-            edu_groups[topic["edu_type"]].append(topic)
-        
-        selected = []
-        
-        # 三场景各选1题（确保覆盖所有场景）
-        for scene in SCENES:
-            if scene_groups[scene]:
-                selected.append(random.choice(scene_groups[scene]))
-        
-        # 检查已选题目覆盖的五育
-        covered_edu = set(t["edu_type"] for t in selected)
-        needed_edu = set(EDU_TYPES) - covered_edu
-        
-        # 补全缺失的五育维度
-        while needed_edu and len(selected) < self.config.total_questions:
-            edu_type = needed_edu.pop()
-            candidates = [t for t in edu_groups[edu_type] if t not in selected]
-            if candidates:
-                selected.append(random.choice(candidates))
-        
-        # 补全剩余题目
-        remaining = [t for t in TOPICS if t not in selected]
-        while len(selected) < self.config.total_questions and remaining:
-            topic = random.choice(remaining)
-            selected.append(topic)
-            remaining.remove(topic)
-        
-        # 打乱顺序
-        random.shuffle(selected)
-        
+        """Select interview questions - delegates to QuestionSelector"""
+        selected = self.question_selector.select(self.config)
         logger.log_interview(
-            self.session.session_id, 
-            "选题完成", 
+            self.session.session_id,
+            "选题完成",
             {"count": len(selected), "topics": [t["name"] for t in selected]}
         )
-        
         return selected
     
     def get_current_question(self) -> str:
@@ -329,28 +288,25 @@ class InterviewEngine:
     def get_summary(self) -> Dict:
         """
         获取访谈摘要
-        
+
         Returns:
             访谈摘要字典
         """
-        scene_stats = {}
-        edu_stats = {}
-        followup_stats = {"预设追问": 0, "AI智能追问": 0}
-        
+        scene_counter = Counter()
+        edu_counter = Counter()
+        followup_counter = Counter()
+
         for log in self.session.conversation_log:
             topic = log.get("topic", "")
             if "-" in topic:
-                scene, edu = topic.split("-")
-                scene_stats[scene] = scene_stats.get(scene, 0) + 1
-                edu_stats[edu] = edu_stats.get(edu, 0) + 1
-            
-            q_type = log.get("question_type", "")
-            if "追问" in q_type:
-                if log.get("is_ai_generated"):
-                    followup_stats["AI智能追问"] += 1
-                else:
-                    followup_stats["预设追问"] += 1
-        
+                scene, edu = topic.split("-", 1)
+                scene_counter[scene] += 1
+                edu_counter[edu] += 1
+
+            if "追问" in log.get("question_type", ""):
+                key = "AI智能追问" if log.get("is_ai_generated") else "预设追问"
+                followup_counter[key] += 1
+
         return {
             "session_id": self.session.session_id,
             "user_name": self.session.user_name,
@@ -359,9 +315,9 @@ class InterviewEngine:
             "api_enabled": is_api_available(),
             "statistics": {
                 "total_logs": len(self.session.conversation_log),
-                "scene_distribution": scene_stats,
-                "edu_distribution": edu_stats,
-                "followup_distribution": followup_stats
+                "scene_distribution": dict(scene_counter),
+                "edu_distribution": dict(edu_counter),
+                "followup_distribution": dict(followup_counter)
             },
             "conversation_log": self.session.conversation_log
         }

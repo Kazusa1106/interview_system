@@ -6,15 +6,16 @@
 """
 
 import sqlite3
-import json
 import os
 import threading
-from datetime import datetime
-from typing import List, Dict, Optional, Tuple
 from contextlib import contextmanager
+from typing import List, Dict, Optional
 
 import interview_system.common.logger as logger
 from interview_system.common.config import BASE_DIR
+from interview_system.data.session_repository import SessionRepository
+from interview_system.data.log_repository import LogRepository
+from interview_system.data.statistics_repository import StatisticsRepository
 
 
 # 数据库文件路径
@@ -44,8 +45,13 @@ class Database:
         self._local = threading.local()
         self._initialized = True
 
-        # 初始化数据库
         self._init_database()
+
+        # Initialize repositories
+        self.sessions = SessionRepository(self.get_cursor)
+        self.logs = LogRepository(self.get_cursor)
+        self.statistics = StatisticsRepository(self.get_cursor)
+
         logger.info(f"数据库初始化完成: {self.db_path}")
 
     def _get_connection(self) -> sqlite3.Connection:
@@ -137,190 +143,47 @@ class Database:
 
             logger.info("数据库表结构初始化完成")
 
-    # ========== 会话相关操作 ==========
+    # ========== 会话相关操作 (Delegate to SessionRepository) ==========
 
-    def create_session(self, session_id: str, user_name: str,
-                      selected_topics: List[Dict]) -> bool:
+    def create_session(self, session_id: str, user_name: str, selected_topics: List[Dict]) -> bool:
         """创建新会话"""
-        try:
-            with self.get_cursor() as cursor:
-                cursor.execute("""
-                    INSERT INTO sessions
-                    (session_id, user_name, start_time, selected_topics)
-                    VALUES (?, ?, ?, ?)
-                """, (
-                    session_id,
-                    user_name,
-                    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    json.dumps(selected_topics, ensure_ascii=False)
-                ))
-            logger.info(f"创建会话成功: {session_id}")
-            return True
-        except Exception as e:
-            logger.error(f"创建会话失败: {e}")
-            return False
+        return self.sessions.create(session_id, user_name, selected_topics)
 
     def get_session(self, session_id: str) -> Optional[Dict]:
         """获取会话信息"""
-        try:
-            with self.get_cursor() as cursor:
-                cursor.execute("""
-                    SELECT * FROM sessions WHERE session_id = ?
-                """, (session_id,))
-                row = cursor.fetchone()
-
-                if row:
-                    row_keys = set(row.keys())
-                    return {
-                        'session_id': row['session_id'],
-                        'user_name': row['user_name'],
-                        'start_time': row['start_time'],
-                        'end_time': row['end_time'],
-                        'is_finished': bool(row['is_finished']),
-                        'current_question_idx': row['current_question_idx'],
-                        'selected_topics': json.loads(row['selected_topics']) if row['selected_topics'] else [],
-                        'is_followup': bool(row['is_followup']) if 'is_followup' in row_keys else False,
-                        'current_followup_is_ai': bool(row['current_followup_is_ai']) if 'current_followup_is_ai' in row_keys else False,
-                        'current_followup_count': row['current_followup_count'] if 'current_followup_count' in row_keys else 0,
-                        'current_followup_question': row['current_followup_question'] if 'current_followup_question' in row_keys else ''
-                    }
-        except Exception as e:
-            logger.error(f"获取会话失败: {e}")
-        return None
+        return self.sessions.get(session_id)
 
     def update_session(self, session_id: str, **kwargs) -> bool:
         """更新会话信息"""
-        try:
-            with self.get_cursor() as cursor:
-                return self._update_session_with_cursor(cursor, session_id, **kwargs)
-        except Exception as e:
-            logger.error(f"更新会话失败: {e}")
-            return False
-
-    def _update_session_with_cursor(self, cursor: sqlite3.Cursor, session_id: str, **kwargs) -> bool:
-        """使用给定 cursor 更新会话信息（用于事务内复用）"""
-        update_fields = []
-        values = []
-
-        for key, value in kwargs.items():
-            if key == 'selected_topics':
-                update_fields.append(f"{key} = ?")
-                values.append(json.dumps(value, ensure_ascii=False))
-            elif key == 'is_finished':
-                update_fields.append(f"{key} = ?")
-                values.append(1 if value else 0)
-            elif key in ('is_followup', 'current_followup_is_ai'):
-                update_fields.append(f"{key} = ?")
-                values.append(1 if value else 0)
-            else:
-                update_fields.append(f"{key} = ?")
-                values.append(value)
-
-        if not update_fields:
-            return False
-
-        update_fields.append("updated_at = ?")
-        values.append(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        values.append(session_id)
-
-        cursor.execute(f"""
-            UPDATE sessions
-            SET {', '.join(update_fields)}
-            WHERE session_id = ?
-        """, values)
-        return True
+        return self.sessions.update(session_id, **kwargs)
 
     def delete_session(self, session_id: str) -> bool:
         """删除会话及其所有日志"""
         try:
             with self.get_cursor() as cursor:
-                # 先删除对话日志
-                cursor.execute("""
-                    DELETE FROM conversation_logs WHERE session_id = ?
-                """, (session_id,))
-
-                # 再删除会话
-                cursor.execute("""
-                    DELETE FROM sessions WHERE session_id = ?
-                """, (session_id,))
-
-            logger.info(f"删除会话成功: {session_id}")
-            return True
+                self.logs.delete_by_session(session_id, cursor)
+                return self.sessions.delete(session_id)
         except Exception as e:
             logger.error(f"删除会话失败: {e}")
             return False
 
     def get_all_sessions(self, limit: int = None, offset: int = 0) -> List[Dict]:
         """获取所有会话列表"""
-        try:
-            with self.get_cursor() as cursor:
-                sql = """
-                    SELECT s.*,
-                           COUNT(cl.id) as log_count
-                    FROM sessions s
-                    LEFT JOIN conversation_logs cl ON s.session_id = cl.session_id
-                    GROUP BY s.session_id
-                    ORDER BY s.start_time DESC
-                """
-
-                if limit:
-                    sql += f" LIMIT {limit} OFFSET {offset}"
-
-                cursor.execute(sql)
-                rows = cursor.fetchall()
-
-                sessions = []
-                for row in rows:
-                    sessions.append({
-                        'session_id': row['session_id'],
-                        'user_name': row['user_name'],
-                        'start_time': row['start_time'],
-                        'end_time': row['end_time'],
-                        'is_finished': bool(row['is_finished']),
-                        'log_count': row['log_count']
-                    })
-
-                return sessions
-        except Exception as e:
-            logger.error(f"获取会话列表失败: {e}")
-            return []
+        return self.sessions.get_all(limit, offset)
 
     def get_session_count(self) -> int:
         """获取会话总数"""
-        try:
-            with self.get_cursor() as cursor:
-                cursor.execute("SELECT COUNT(*) as count FROM sessions")
-                row = cursor.fetchone()
-                return row['count'] if row else 0
-        except Exception as e:
-            logger.error(f"获取会话总数失败: {e}")
-            return 0
+        return self.sessions.count()
 
-    # ========== 对话日志相关操作 ==========
+    # ========== 对话日志相关操作 (Delegate to LogRepository) ==========
 
     def add_conversation_log(self, session_id: str, log_entry: Dict) -> bool:
         """添加对话日志"""
-        try:
-            with self.get_cursor() as cursor:
-                cursor.execute("""
-                    INSERT INTO conversation_logs
-                    (session_id, timestamp, topic, question_type, question,
-                     answer, depth_score, is_ai_generated)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    session_id,
-                    log_entry.get('timestamp', datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
-                    log_entry.get('topic', ''),
-                    log_entry.get('question_type', ''),
-                    log_entry.get('question', ''),
-                    log_entry.get('answer', ''),
-                    log_entry.get('depth_score', 0),
-                    1 if log_entry.get('is_ai_generated', False) else 0
-                ))
-            return True
-        except Exception as e:
-            logger.error(f"添加对话日志失败: {e}")
-            return False
+        return self.logs.add(session_id, log_entry)
+
+    def get_conversation_logs(self, session_id: str) -> List[Dict]:
+        """获取会话的所有对话日志"""
+        return self.logs.get_by_session(session_id)
 
     def delete_last_conversation_logs(
         self,
@@ -328,41 +191,8 @@ class Database:
         count: int,
         cursor: Optional[sqlite3.Cursor] = None
     ) -> bool:
-        """
-        删除某会话最近 N 条对话日志（按自增 id 倒序）
-
-        Args:
-            session_id: 会话ID
-            count: 删除条数（<=0 视为无操作成功）
-            cursor: 可选外部事务 cursor
-
-        Returns:
-            是否成功
-        """
-        if count <= 0:
-            return True
-
-        sql = """
-            DELETE FROM conversation_logs
-            WHERE id IN (
-                SELECT id FROM conversation_logs
-                WHERE session_id = ?
-                ORDER BY id DESC
-                LIMIT ?
-            )
-        """
-
-        try:
-            if cursor is not None:
-                cursor.execute(sql, (session_id, count))
-                return True
-
-            with self.get_cursor() as inner_cursor:
-                inner_cursor.execute(sql, (session_id, count))
-            return True
-        except Exception as e:
-            logger.error(f"删除对话日志失败: {e}")
-            return False
+        """删除某会话最近 N 条对话日志"""
+        return self.logs.delete_last_n(session_id, count, cursor)
 
     def rollback_session_state(
         self,
@@ -371,29 +201,19 @@ class Database:
         delete_log_count: int,
         session_update: Dict
     ) -> bool:
-        """
-        原子回滚会话状态（删尾日志 + 更新 sessions）
-
-        Args:
-            session_id: 会话ID
-            delete_log_count: 需要删除的尾部日志数量
-            session_update: 需要写回 sessions 的字段（与 update_session kwargs 一致）
-
-        Returns:
-            是否成功
-        """
+        """原子回滚会话状态（删尾日志 + 更新 sessions）"""
         if delete_log_count < 0:
             return False
 
         try:
             with self.get_cursor() as cursor:
                 if delete_log_count > 0:
-                    ok = self.delete_last_conversation_logs(session_id, delete_log_count, cursor=cursor)
+                    ok = self.logs.delete_last_n(session_id, delete_log_count, cursor)
                     if not ok:
                         return False
 
                 if session_update:
-                    ok = self._update_session_with_cursor(cursor, session_id, **session_update)
+                    ok = self.sessions._update_with_cursor(cursor, session_id, **session_update)
                     if not ok:
                         return False
 
@@ -402,165 +222,15 @@ class Database:
             logger.error(f"回滚会话状态失败: {e}")
             return False
 
-    def get_conversation_logs(self, session_id: str) -> List[Dict]:
-        """获取会话的所有对话日志"""
-        try:
-            with self.get_cursor() as cursor:
-                cursor.execute("""
-                    SELECT * FROM conversation_logs
-                    WHERE session_id = ?
-                    ORDER BY id ASC
-                """, (session_id,))
-                rows = cursor.fetchall()
+    # ========== 统计分析相关操作 (Delegate to StatisticsRepository) ==========
 
-                logs = []
-                for row in rows:
-                    logs.append({
-                        'timestamp': row['timestamp'],
-                        'topic': row['topic'],
-                        'question_type': row['question_type'],
-                        'question': row['question'],
-                        'answer': row['answer'],
-                        'depth_score': row['depth_score'],
-                        'is_ai_generated': bool(row['is_ai_generated'])
-                    })
-
-                return logs
-        except Exception as e:
-            logger.error(f"获取对话日志失败: {e}")
-            return []
-
-    # ========== 统计分析相关操作 ==========
-
-    def get_statistics_by_date_range(self, start_date: str = None,
-                                     end_date: str = None) -> Dict:
+    def get_statistics_by_date_range(self, start_date: str = None, end_date: str = None) -> Dict:
         """获取日期范围内的统计数据"""
-        try:
-            with self.get_cursor() as cursor:
-                # 构建日期过滤条件
-                date_filter = ""
-                params = []
-
-                if start_date:
-                    date_filter += " AND s.start_time >= ?"
-                    params.append(start_date)
-                if end_date:
-                    date_filter += " AND s.start_time <= ?"
-                    params.append(end_date)
-
-                # 总会话数和完成率
-                cursor.execute(f"""
-                    SELECT
-                        COUNT(*) as total_sessions,
-                        SUM(CASE WHEN is_finished = 1 THEN 1 ELSE 0 END) as finished_sessions
-                    FROM sessions s
-                    WHERE 1=1 {date_filter}
-                """, params)
-                row = cursor.fetchone()
-                total_sessions = row['total_sessions']
-                finished_sessions = row['finished_sessions']
-
-                # 场景分布
-                cursor.execute(f"""
-                    SELECT
-                        CASE
-                            WHEN topic LIKE '学校-%' THEN '学校'
-                            WHEN topic LIKE '家庭-%' THEN '家庭'
-                            WHEN topic LIKE '社区-%' THEN '社区'
-                            ELSE '其他'
-                        END as scene,
-                        COUNT(*) as count
-                    FROM conversation_logs cl
-                    JOIN sessions s ON cl.session_id = s.session_id
-                    WHERE 1=1 {date_filter}
-                    GROUP BY scene
-                """, params)
-                scene_distribution = {row['scene']: row['count'] for row in cursor.fetchall()}
-
-                # 五育分布
-                cursor.execute(f"""
-                    SELECT
-                        CASE
-                            WHEN topic LIKE '%-德育' THEN '德育'
-                            WHEN topic LIKE '%-智育' THEN '智育'
-                            WHEN topic LIKE '%-体育' THEN '体育'
-                            WHEN topic LIKE '%-美育' THEN '美育'
-                            WHEN topic LIKE '%-劳育' THEN '劳育'
-                            ELSE '其他'
-                        END as edu_type,
-                        COUNT(*) as count
-                    FROM conversation_logs cl
-                    JOIN sessions s ON cl.session_id = s.session_id
-                    WHERE 1=1 {date_filter}
-                    GROUP BY edu_type
-                """, params)
-                edu_distribution = {row['edu_type']: row['count'] for row in cursor.fetchall()}
-
-                # 追问统计
-                cursor.execute(f"""
-                    SELECT
-                        CASE
-                            WHEN is_ai_generated = 1 THEN 'AI智能追问'
-                            ELSE '预设追问'
-                        END as followup_type,
-                        COUNT(*) as count
-                    FROM conversation_logs cl
-                    JOIN sessions s ON cl.session_id = s.session_id
-                    WHERE question_type LIKE '%追问%' {date_filter}
-                    GROUP BY followup_type
-                """, params)
-                followup_distribution = {row['followup_type']: row['count'] for row in cursor.fetchall()}
-
-                # 平均深度分数
-                cursor.execute(f"""
-                    SELECT AVG(depth_score) as avg_depth
-                    FROM conversation_logs cl
-                    JOIN sessions s ON cl.session_id = s.session_id
-                    WHERE 1=1 {date_filter}
-                """, params)
-                row = cursor.fetchone()
-                avg_depth = round(row['avg_depth'], 2) if row['avg_depth'] else 0
-
-                return {
-                    'total_sessions': total_sessions,
-                    'finished_sessions': finished_sessions,
-                    'completion_rate': round(finished_sessions / total_sessions * 100, 1) if total_sessions > 0 else 0,
-                    'scene_distribution': scene_distribution,
-                    'edu_distribution': edu_distribution,
-                    'followup_distribution': followup_distribution,
-                    'avg_depth_score': avg_depth
-                }
-        except Exception as e:
-            logger.error(f"获取统计数据失败: {e}")
-            return {}
+        return self.statistics.get_by_date_range(start_date, end_date)
 
     def get_daily_statistics(self, days: int = 7) -> List[Dict]:
         """获取最近N天的每日统计"""
-        try:
-            with self.get_cursor() as cursor:
-                cursor.execute("""
-                    SELECT
-                        DATE(start_time) as date,
-                        COUNT(*) as session_count,
-                        SUM(CASE WHEN is_finished = 1 THEN 1 ELSE 0 END) as finished_count
-                    FROM sessions
-                    WHERE start_time >= datetime('now', ?)
-                    GROUP BY DATE(start_time)
-                    ORDER BY date DESC
-                """, (f'-{days} days',))
-
-                rows = cursor.fetchall()
-                return [
-                    {
-                        'date': row['date'],
-                        'session_count': row['session_count'],
-                        'finished_count': row['finished_count']
-                    }
-                    for row in rows
-                ]
-        except Exception as e:
-            logger.error(f"获取每日统计失败: {e}")
-            return []
+        return self.statistics.get_daily_stats(days)
 
     def close(self):
         """关闭数据库连接"""

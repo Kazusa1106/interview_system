@@ -121,3 +121,8 @@ def log_interview(session_id: str, event: str, data: dict = None):
         msg += f" - {data}"
     logger.info(msg)
 
+
+def get_logger(name: str = "interview") -> logging.Logger:
+    """获取日志记录器（便捷函数）"""
+    return InterviewLogger.get_logger(name)
+

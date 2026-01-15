@@ -4,11 +4,13 @@
 
 **AI-Powered Interview Platform for Holistic Education Assessment**
 
-[![Python Version](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11-blue.svg)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-active-success.svg)]()
 
 [Quick Start](#quick-start) • [Features](#features) • [Documentation](#documentation) • [Configuration](#configuration)
+
+**English** | [中文](README_zh.md)
 
 </div>
 
@@ -61,69 +63,53 @@
 
 ### Prerequisites
 
-- **Python**: 3.8 - 3.11 (3.12+ not supported)
+- **Python**: 3.10+ (3.10, 3.11, 3.12, 3.13 supported)
 - **OS**: Windows 10/11, macOS, Linux
 
 ### Check Python Version
 
 ```bash
-python --version  # Must be 3.8-3.11
+python --version  # Must be 3.10+
 ```
 
 ### Install & Run
+
+**Method 1: One-line install (Recommended)**
+
+```bash
+# Clone and install
+git clone https://github.com/username/interview_system.git
+cd interview_system
+pip install -e .
+
+# Run (choose one)
+interview          # Interactive mode selector
+interview-web      # Direct web mode
+interview-admin    # Admin dashboard
+```
+
+**Method 2: Traditional install**
 
 ```bash
 # Clone repository
 git clone https://github.com/username/interview_system.git
 cd interview_system
 
-# Create virtual environment
+# Create virtual environment (optional but recommended)
 python -m venv venv
-
-# Activate (Windows)
-venv\Scripts\activate
-# Activate (Linux/macOS)
-source venv/bin/activate
+venv\Scripts\activate      # Windows
+source venv/bin/activate   # Linux/macOS
 
 # Install dependencies
-pip install -r requirements.txt
+pip install .
 
 # Run application
 python -m interview_system
 ```
 
-### Windows Quick Launch
-
-```bash
-scripts\install_and_test.bat  # Install & test
-scripts\start_web.bat         # Launch web interface
-scripts\start_admin.bat       # Launch admin dashboard
-```
-
 ---
 
 ## Installation
-
-<details>
-<summary><b>Method 1: Virtual Environment (Recommended)</b></summary>
-
-```bash
-python -m venv venv
-venv\Scripts\activate  # Windows
-source venv/bin/activate  # Linux/macOS
-pip install -r requirements.txt
-```
-
-</details>
-
-<details>
-<summary><b>Method 2: Direct Install</b></summary>
-
-```bash
-pip install -r requirements.txt
-```
-
-</details>
 
 <details>
 <summary><b>Dependency Conflicts</b></summary>
@@ -139,7 +125,7 @@ pip install -r requirements-lock.txt
 ### Testing
 
 ```bash
-pip install -r requirements-dev.txt
+pip install -e ".[dev]"
 pytest -q
 ```
 
@@ -335,13 +321,9 @@ interview_system/
 ├── docs/                      # Documentation
 │   ├── QUICKSTART.md
 │   └── INSTALL_TEST.md
-├── scripts/                   # Utility scripts
-│   ├── start_web.bat
-│   ├── start_admin.bat
-│   └── install_and_test.bat
 ├── exports/                   # Exported interviews (auto-generated)
 ├── logs/                      # Log files (auto-generated)
-├── requirements.txt           # Dependencies
+├── pyproject.toml             # Project configuration (PEP 517/518)
 ├── requirements-lock.txt      # Locked versions
 ├── .env.example               # Environment template
 └── interview_data.db          # SQLite database (auto-generated)

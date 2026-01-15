@@ -8,6 +8,8 @@ Provides utility functions for web interface
 import socket
 from typing import Dict
 
+import interview_system.common.logger as logger
+
 
 def get_local_ip() -> str:
     """Get local network IP address"""
@@ -17,7 +19,8 @@ def get_local_ip() -> str:
         ip = s.getsockname()[0]
         s.close()
         return ip
-    except:
+    except OSError as e:
+        logger.debug(f"获取本地IP失败，使用localhost: {e}")
         return "127.0.0.1"
 
 

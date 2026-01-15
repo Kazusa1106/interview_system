@@ -11,7 +11,19 @@ import interview_system.common.logger as logger
 from interview_system.common.config import WEB_CONFIG
 from interview_system.ui.web_handler import InterviewHandler
 from interview_system.ui.web_utils import get_local_ip
-from interview_system.ui.web_styles import WECHAT_CSS
+from interview_system.ui.web_styles import get_custom_css
+from interview_system.ui.web_components import (
+    create_header,
+    create_chatbot,
+    create_input_area,
+    create_action_buttons,
+    create_sidebar,
+    init_handler,
+    respond,
+    undo_action,
+    skip_question,
+    new_interview
+)
 
 # Check Gradio availability
 GRADIO_AVAILABLE = False
@@ -25,6 +37,68 @@ except ImportError as e:
     logger.warning("请运行 `pip install gradio qrcode[pil]` 安装缺失的库")
 
 
+def _register_events(demo, components: dict):
+    """Register all event handlers for the interface"""
+    _register_init_events(demo, components)
+    _register_message_events(components)
+    _register_navigation_events(components)
+
+
+def _register_init_events(demo, components: dict):
+    """Register initialization events"""
+    demo.load(
+        init_handler,
+        outputs=[components['handler_state'], components['chatbot']]
+    )
+
+
+def _register_message_events(components: dict):
+    """Register message input/submit events"""
+    msg = components['msg']
+    submit_btn = components['submit_btn']
+    chatbot = components['chatbot']
+    handler_state = components['handler_state']
+
+    msg.submit(
+        respond,
+        [msg, chatbot, handler_state],
+        [chatbot, msg, msg, handler_state]
+    )
+
+    submit_btn.click(
+        respond,
+        [msg, chatbot, handler_state],
+        [chatbot, msg, msg, handler_state]
+    )
+
+
+def _register_navigation_events(components: dict):
+    """Register navigation/action button events"""
+    skip_btn = components['skip_btn']
+    refresh_btn = components['refresh_btn']
+    undo_btn = components['undo_btn']
+    chatbot = components['chatbot']
+    handler_state = components['handler_state']
+    msg = components['msg']
+
+    skip_btn.click(
+        skip_question,
+        [chatbot, handler_state],
+        [chatbot, handler_state, msg]
+    )
+
+    refresh_btn.click(
+        new_interview,
+        outputs=[handler_state, chatbot, msg]
+    )
+
+    undo_btn.click(
+        undo_action,
+        inputs=[chatbot, handler_state],
+        outputs=[chatbot, msg, msg, handler_state]
+    )
+
+
 def create_web_interface():
     """创建Web界面"""
     if not GRADIO_AVAILABLE:
@@ -32,252 +106,137 @@ def create_web_interface():
         return None
 
     with gr.Blocks(
-        title=WEB_CONFIG.title,
-        theme=gr.themes.Soft(),
-        css=WECHAT_CSS
+        title=WEB_CONFIG.title
     ) as demo:
-        # 状态：每个用户独立的处理器
         handler_state = gr.State(None)
 
-        # 顶部栏（微信风格近似）
         with gr.Row():
-            gr.HTML(
-                """
-                <div class="wechat-topbar">
-                    <p class="wechat-title">大学生五育并举访谈</p>
-                    <p class="wechat-subtitle">像微信一样聊天式访谈，放松分享真实经历与感受</p>
-                </div>
-                """,
-                elem_id="wechat_header"
-            )
+            create_header()
 
         with gr.Row():
             with gr.Column(scale=3):
-                # 聊天区域
-                chatbot = gr.Chatbot(
-                    label="访谈对话",
-                    height=500,
-                    show_label=False,
-                    bubble_full_width=False,
-                    avatar_images=(None, "https://em-content.zobj.net/source/twitter/376/robot_1f916.png"),
-                    elem_id="wechat_chat"
-                )
-
-                # 进度显示
-                progress_html = gr.HTML("""
-                <div class="stats-box">
-                    <p><strong>📊 访谈进度</strong></p>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: 0%;"></div>
-                    </div>
-                    <p style="text-align: center; margin: 5px 0 0 0;">准备开始访谈...</p>
-                </div>
-                """)
+                chatbot = create_chatbot()
 
                 with gr.Row(elem_id="wechat_input_bar"):
-                    msg = gr.Textbox(
-                        label="你的回答",
-                        placeholder="请输入你的回答…",
-                        scale=6,
-                        show_label=False,
-                        lines=2,
-                        max_lines=5
-                    )
-                    submit_btn = gr.Button("发送", variant="primary", scale=1, elem_id="wechat_send_btn")
+                    msg, submit_btn = create_input_area()
 
                 with gr.Row(elem_id="wechat_action_bar"):
-                    undo_btn = gr.Button("↩️ 撤回", variant="secondary", scale=1)
-                    skip_btn = gr.Button("⏭️ 跳过此题", variant="secondary", scale=1)
-                    refresh_btn = gr.Button("🔄 重新开始", variant="secondary", scale=1)
+                    undo_btn, skip_btn, refresh_btn = create_action_buttons()
 
             with gr.Column(scale=1, elem_id="wechat_sidebar"):
-                # 侧边栏 - 使用说明和统计
-                gr.Markdown("""
-                ### 📖 使用说明
+                instructions, stats_display = create_sidebar()
 
-                欢迎参加访谈！本次访谈将围绕五育发展展开。
+        _register_events(demo, {
+            'msg': msg,
+            'submit_btn': submit_btn,
+            'skip_btn': skip_btn,
+            'refresh_btn': refresh_btn,
+            'undo_btn': undo_btn,
+            'chatbot': chatbot,
+            'handler_state': handler_state
+        })
 
-                **操作提示**：
-                - 💬 在下方输入框输入回答
-                - ⏭️ 不方便回答可点击跳过
-                - 🔄 可随时重新开始
-
-                **访谈规则**：
-                - 共 6 个问题
-                - 涵盖学校、家庭、社区场景
-                - 包含德智体美劳五育内容
-                - AI会根据你的回答智能追问
-
-                ---
-
-                ### 💡 小贴士
-
-                回答时可以包含：
-                - ✨ 具体的经历和例子
-                - 💭 你的真实感受
-                - 📈 你的收获和改变
-                - 🔍 过程中的细节
-
-                回答越详细，AI追问会越精准！
-                """)
-
-                # 实时统计（如果可用）
-                stats_display = gr.Markdown("""
-                ### 📊 实时统计
-
-                *访谈开始后显示统计*
-                """)
-        
-        # 事件处理函数
-        def init_handler():
-            """初始化处理器 - 延迟加载模式，快速返回欢迎页面"""
-            handler = InterviewHandler()
-            history, _ = handler.lazy_initialize()
-            return handler, history
-
-        def respond(user_input, history, handler):
-            """处理用户输入"""
-            if handler is None:
-                handler = InterviewHandler()
-
-            new_history, clear_input, input_update = handler.process_message(user_input, history)
-            return new_history, clear_input, input_update, handler
-
-        def undo_action(history, handler):
-            """撤回最近一次操作"""
-            if handler is None:
-                return history, "", gr.update(), handler
-            new_history, restored_input, input_update = handler.undo_last(history)
-            return new_history, restored_input, input_update, handler
-
-        def skip_question(history, handler):
-            """跳过当前问题"""
-            if handler is None or not handler._initialized:
-                return history, handler, gr.update()
-
-            new_history, clear_input, input_update = handler.skip_round(history)
-            return new_history, handler, input_update
-
-        def new_interview():
-            """开始新访谈"""
-            handler = InterviewHandler()
-            history, _ = handler.lazy_initialize()
-            return handler, history, gr.update(interactive=True)
-        
-        # 页面加载时初始化
-        demo.load(
-            init_handler,
-            outputs=[handler_state, chatbot]
-        )
-        
-        # 绑定事件
-        msg.submit(
-            respond,
-            [msg, chatbot, handler_state],
-            [chatbot, msg, msg, handler_state]
-        )
-        
-        submit_btn.click(
-            respond,
-            [msg, chatbot, handler_state],
-            [chatbot, msg, msg, handler_state]
-        )
-        
-        skip_btn.click(
-            skip_question,
-            [chatbot, handler_state],
-            [chatbot, handler_state, msg]
-        )
-        
-        refresh_btn.click(
-            new_interview,
-            outputs=[handler_state, chatbot, msg]
-        )
-
-        undo_btn.click(
-            undo_action,
-            inputs=[chatbot, handler_state],
-            outputs=[chatbot, msg, msg, handler_state]
-        )
-    
     return demo
 
 
 def start_web_server(share: bool = None):
     """
     启动Web服务器
-    
+
     Args:
         share: 是否生成公网链接（默认使用配置）
     """
+    log = logger.get_logger(__name__)
+
     if not GRADIO_AVAILABLE:
-        logger.error("无法启动Web服务：缺少 gradio 库")
-        print("❌ 无法启动 Web 版：缺少 gradio 库。请先运行 pip install gradio qrcode[pil]")
+        log.error("无法启动Web服务：缺少 gradio 库")
         return
-    
+
     demo = create_web_interface()
     if not demo:
+        log.error("创建Web界面失败")
         return
-    
+
+    should_share = share if share is not None else WEB_CONFIG.share
+    _launch_and_serve(demo, should_share, log)
+
+
+def _launch_and_serve(demo, share: bool, log):
+    """Launch Gradio server and serve until interrupted"""
     local_ip = get_local_ip()
     port = WEB_CONFIG.port
     url = f"http://{local_ip}:{port}"
-    should_share = share if share is not None else WEB_CONFIG.share
-    
-    print("\n" + "=" * 50)
-    print(f"🚀 Web 服务器即将启动！")
-    print(f"📍 局域网地址：{url}")
-    if should_share:
-        print("🌐 正在生成公网链接，请稍候...")
-    print("=" * 50 + "\n")
-    
+
+    log.info("准备启动Web服务器", extra={"url": url, "share": share})
+    _print_pre_launch_info(url, share)
+
     try:
         app, local_url, share_url = demo.launch(
             server_name=WEB_CONFIG.host,
             server_port=port,
-            share=should_share,
-            prevent_thread_lock=True
+            share=share,
+            prevent_thread_lock=True,
+            theme=gr.themes.Soft(),
+            css=get_custom_css()
         )
-        
-        # 确定最终URL
+
         final_url = share_url if share_url else url
-        
-        print("\n" + "=" * 50)
-        if share_url:
-            print(f"✅ 公网链接已生成：{share_url}")
-            print("📱 任何人都可以扫描下方二维码访问（无需同一WiFi）")
-        else:
-            print(f"📍 局域网地址：{url}")
-            print("📱 请确保手机与电脑在同一WiFi下")
-        print("=" * 50 + "\n")
-        
-        # 生成二维码
-        try:
-            qr = qrcode.QRCode()
-            qr.add_data(final_url)
-            qr.print_ascii()
-            
-            # 保存二维码图片
-            img = qrcode.make(final_url)
-            img.save("access_code.png")
-            print(f"\n✅ 已生成二维码图片：access_code.png")
-        except Exception as e:
-            logger.warning(f"生成二维码失败: {e}")
-        
-        logger.info(f"Web服务器已启动 - {final_url}")
-        
-        # 保持运行
-        import time
-        try:
-            while True:
-                time.sleep(1)
-        except KeyboardInterrupt:
-            print("\n服务已停止。")
-            logger.info("Web服务器已停止")
-    
+        _print_post_launch_info(final_url, share_url, url)
+        _generate_qr_code(final_url, log)
+
+        log.info("Web服务器已启动", extra={"url": final_url})
+        _keep_alive(log)
+
     except Exception as e:
-        logger.error(f"启动Web服务器失败: {e}")
-        print(f"❌ 启动失败: {e}")
+        log.error("启动Web服务器失败", extra={"error": str(e)}, exc_info=True)
+
+
+def _print_pre_launch_info(url: str, share: bool):
+    """Print pre-launch information"""
+    print("\n" + "=" * 50)
+    print(f"🚀 Web 服务器即将启动！")
+    print(f"📍 局域网地址：{url}")
+    if share:
+        print("🌐 正在生成公网链接，请稍候...")
+    print("=" * 50 + "\n")
+
+
+def _print_post_launch_info(final_url: str, share_url: str, local_url: str):
+    """Print post-launch information"""
+    print("\n" + "=" * 50)
+    if share_url:
+        print(f"✅ 公网链接已生成：{share_url}")
+        print("📱 任何人都可以扫描下方二维码访问（无需同一WiFi）")
+    else:
+        print(f"📍 局域网地址：{local_url}")
+        print("📱 请确保手机与电脑在同一WiFi下")
+    print("=" * 50 + "\n")
+
+
+def _generate_qr_code(url: str, log):
+    """Generate and save QR code for URL"""
+    try:
+        qr = qrcode.QRCode()
+        qr.add_data(url)
+        qr.print_ascii()
+
+        img = qrcode.make(url)
+        img.save("access_code.png")
+        log.info("二维码已生成", extra={"path": "access_code.png"})
+        print(f"\n✅ 已生成二维码图片：access_code.png")
+    except Exception as e:
+        log.warning("生成二维码失败", extra={"error": str(e)})
+
+
+def _keep_alive(log):
+    """Keep server running until keyboard interrupt"""
+    import time
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        log.info("Web服务器停止（用户中断）")
+        print("\n服务已停止。")
 
 
 def check_gradio_available() -> bool:

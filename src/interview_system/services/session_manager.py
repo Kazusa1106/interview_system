@@ -25,7 +25,7 @@ except ImportError:
 
 @dataclass
 class InterviewSession:
-    """访谈会话"""
+    """Interview session state"""
     session_id: str
     user_name: str = "访谈者"
     start_time: str = ""
@@ -33,18 +33,18 @@ class InterviewSession:
     is_finished: bool = False
     current_question_idx: int = 0
     is_followup: bool = False
-    current_followup_is_ai: bool = False  # 当前追问是否为AI生成
-    current_followup_count: int = 0  # 当前问题的追问次数
-    current_followup_question: str = ""  # 当前追问的问题内容
+    current_followup_is_ai: bool = False
+    current_followup_count: int = 0
+    current_followup_question: str = ""
     selected_topics: List[Dict] = field(default_factory=list)
     conversation_log: List[Dict] = field(default_factory=list)
-    
+
     def __post_init__(self):
         if not self.start_time:
             self.start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
+
     def to_dict(self) -> dict:
-        """转换为字典"""
+        """Convert to dict"""
         return {
             "session_id": self.session_id,
             "user_name": self.user_name,
@@ -61,7 +61,7 @@ class InterviewSession:
 
     @classmethod
     def from_db_dict(cls, data: dict) -> 'InterviewSession':
-        """从数据库字典创建会话对象"""
+        """Create from database dict"""
         return cls(
             session_id=data.get('session_id', ''),
             user_name=data.get('user_name', '访谈者'),
@@ -74,7 +74,7 @@ class InterviewSession:
             current_followup_count=data.get('current_followup_count', 0),
             current_followup_question=data.get('current_followup_question', ''),
             selected_topics=data.get('selected_topics', []),
-            conversation_log=[]  # 日志需要单独加载
+            conversation_log=[]
         )
 
 
@@ -104,95 +104,72 @@ class SessionManager:
 
         self._db = get_database() if DATABASE_AVAILABLE else None
 
-        # Lazy import to avoid circular dependency
-        from interview_system.services.session_exporter import SessionExporter
-        from interview_system.services.session_statistics import SessionStatistics
+        # Initialize repositories
+        if self._db:
+            self.session_repo = self._db.sessions
+            self.log_repo = self._db.logs
+            self.stats_repo = self._db.statistics
+        else:
+            self.session_repo = None
+            self.log_repo = None
+            self.stats_repo = None
 
-        self._exporter = SessionExporter(self)
+        from interview_system.services.session_statistics import SessionStatistics
+        from interview_system.services.state_rollback import StateRollbackManager
+
         self._statistics = SessionStatistics(self)
+        self._rollback_manager = StateRollbackManager(self._db)
 
         ensure_dirs()
         db_status = "已启用" if self._db else "未启用"
         logger.info(f"会话管理器初始化完成 (数据库: {db_status})")
     
     def create_session(self, user_name: str = None) -> InterviewSession:
-        """
-        创建新会话
-
-        Args:
-            user_name: 用户名（可选）
-
-        Returns:
-            新创建的会话
-        """
+        """Create new session"""
         with self._session_lock:
-            # 检查会话数量限制
             if len(self._sessions) >= self._max_sessions:
                 self._cleanup_expired_sessions()
-
                 if len(self._sessions) >= self._max_sessions:
                     logger.warning("会话数量已达上限，清理最旧的会话")
                     self._remove_oldest_session()
 
-            # 创建新会话
             session_id = str(uuid.uuid4())[:8]
             session = InterviewSession(
                 session_id=session_id,
                 user_name=user_name or f"访谈者_{session_id}"
             )
-
             self._sessions[session_id] = session
 
-            # 同步保存到数据库
-            if self._db:
-                self._db.create_session(
-                    session_id=session.session_id,
-                    user_name=session.user_name,
-                    selected_topics=session.selected_topics
+            if self.session_repo:
+                self.session_repo.create(
+                    session.session_id,
+                    session.user_name,
+                    session.selected_topics
                 )
 
             logger.log_session(session_id, "创建会话", f"用户: {session.user_name}")
-
             return session
     
     def get_session(self, session_id: str) -> Optional[InterviewSession]:
-        """
-        获取会话
-
-        Args:
-            session_id: 会话ID
-
-        Returns:
-            会话对象，不存在返回 None
-        """
-        # 先从内存中获取
+        """Get session by ID"""
         session = self._sessions.get(session_id)
 
-        # 如果内存中没有，尝试从数据库加载
-        if not session and self._db:
-            db_session = self._db.get_session(session_id)
+        if not session and self.session_repo:
+            db_session = self.session_repo.get(session_id)
             if db_session:
                 session = InterviewSession.from_db_dict(db_session)
-                # 加载对话日志
-                session.conversation_log = self._db.get_conversation_logs(session_id)
-                # 缓存到内存
+                session.conversation_log = self.log_repo.get_by_session(session_id)
                 self._sessions[session_id] = session
 
         return session
     
     def update_session(self, session: InterviewSession):
-        """
-        更新会话
-
-        Args:
-            session: 会话对象
-        """
+        """Update session"""
         with self._session_lock:
             self._sessions[session.session_id] = session
 
-            # 同步更新到数据库
-            if self._db:
-                self._db.update_session(
+            if self.session_repo:
+                self.session_repo.update(
                     session_id=session.session_id,
                     current_question_idx=session.current_question_idx,
                     selected_topics=session.selected_topics,
@@ -205,134 +182,58 @@ class SessionManager:
                 )
 
     def end_session(self, session_id: str) -> bool:
-        """
-        结束会话
-
-        Args:
-            session_id: 会话ID
-
-        Returns:
-            是否成功结束
-        """
-        session = self.get_session(session_id)
-        if session:
-            session.is_finished = True
-            session.end_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-            # 同步更新到数据库
-            if self._db:
-                self._db.update_session(
-                    session_id=session_id,
-                    is_finished=True,
-                    end_time=session.end_time
-                )
-
-            logger.log_session(session_id, "结束会话")
-            return True
-        return False
-
-    def add_conversation_log(self, session_id: str, log_entry: Dict) -> bool:
-        """
-        添加对话日志
-
-        Args:
-            session_id: 会话ID
-            log_entry: 日志条目
-
-        Returns:
-            是否成功添加
-        """
+        """End session"""
         session = self.get_session(session_id)
         if not session:
             return False
 
-        # 添加到内存
+        session.is_finished = True
+        session.end_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        if self.session_repo:
+            self.session_repo.update(
+                session_id=session_id,
+                is_finished=True,
+                end_time=session.end_time
+            )
+
+        logger.log_session(session_id, "结束会话")
+        return True
+
+    def add_conversation_log(self, session_id: str, log_entry: Dict) -> bool:
+        """Add conversation log"""
+        session = self.get_session(session_id)
+        if not session:
+            return False
+
         session.conversation_log.append(log_entry)
 
-        # 同步保存到数据库
-        if self._db:
-            self._db.add_conversation_log(session_id, log_entry)
+        if self.log_repo:
+            self.log_repo.add(session_id, log_entry)
 
         return True
 
     def rollback_session(self, session_id: str, *, target_log_count: int, session_state: dict) -> bool:
-        """
-        回滚会话到指定状态（用于撤回）
-
-        Args:
-            session_id: 会话ID
-            target_log_count: 回滚后应保留的对话日志条数
-            session_state: 需要恢复的会话状态字段快照
-
-        Returns:
-            是否回滚成功
-        """
+        """Rollback session to specified state"""
         with self._session_lock:
             session = self.get_session(session_id)
             if not session:
                 logger.warning(f"回滚失败：会话 {session_id} 不存在")
                 return False
 
-            current_log_count = len(session.conversation_log)
-            if target_log_count < 0 or target_log_count > current_log_count:
-                logger.warning(
-                    f"回滚失败：target_log_count={target_log_count} 不合法（当前={current_log_count}）"
-                )
-                return False
+            success = self._rollback_manager.rollback(
+                session,
+                target_log_count=target_log_count,
+                session_state=session_state
+            )
 
-            delete_log_count = current_log_count - target_log_count
+            if success:
+                self._sessions[session.session_id] = session
 
-            # 数据库可用时必须原子回滚，失败则不应修改内存
-            if self._db:
-                is_finished = bool(session_state.get("is_finished", False))
-                end_time = session_state.get("end_time") if is_finished else None
-                session_update = {
-                    "current_question_idx": session_state.get("current_question_idx", 0),
-                    "is_finished": is_finished,
-                    "end_time": end_time,
-                    "is_followup": bool(session_state.get("is_followup", False)),
-                    "current_followup_is_ai": bool(session_state.get("current_followup_is_ai", False)),
-                    "current_followup_count": int(session_state.get("current_followup_count", 0)),
-                    "current_followup_question": session_state.get("current_followup_question", "") or "",
-                }
-
-                ok = self._db.rollback_session_state(
-                    session_id,
-                    delete_log_count=delete_log_count,
-                    session_update=session_update
-                )
-                if not ok:
-                    logger.error(f"回滚失败：数据库回滚未成功 (session_id={session_id})")
-                    return False
-
-            # 回滚内存状态
-            session.conversation_log = session.conversation_log[:target_log_count]
-            session.current_question_idx = int(session_state.get("current_question_idx", session.current_question_idx))
-            session.is_finished = bool(session_state.get("is_finished", session.is_finished))
-            session.end_time = session_state.get("end_time", session.end_time) or ""
-            if not session.is_finished:
-                session.end_time = ""
-
-            session.is_followup = bool(session_state.get("is_followup", session.is_followup))
-            session.current_followup_is_ai = bool(session_state.get("current_followup_is_ai", session.current_followup_is_ai))
-            session.current_followup_count = int(session_state.get("current_followup_count", session.current_followup_count))
-            session.current_followup_question = session_state.get("current_followup_question", session.current_followup_question) or ""
-
-            self._sessions[session.session_id] = session
-
-            logger.log_session(session_id, "回滚会话", f"logs={current_log_count}->{target_log_count}")
-            return True
+            return success
     
     def remove_session(self, session_id: str) -> bool:
-        """
-        移除会话
-        
-        Args:
-            session_id: 会话ID
-            
-        Returns:
-            是否成功移除
-        """
+        """Remove session"""
         with self._session_lock:
             if session_id in self._sessions:
                 del self._sessions[session_id]
@@ -341,63 +242,69 @@ class SessionManager:
         return False
     
     def get_active_session_count(self) -> int:
-        """获取活跃会话数量"""
+        """Get active session count"""
         return sum(1 for s in self._sessions.values() if not s.is_finished)
     
     def get_all_sessions(self) -> List[InterviewSession]:
-        """获取所有会话（优先从数据库加载）"""
-        if self._db:
-            # 从数据库加载所有会话
-            db_sessions = self._db.get_all_sessions(limit=1000)
-            sessions = []
-            for db_session in db_sessions:
-                # 先尝试从内存获取
-                session = self._sessions.get(db_session['session_id'])
-                if not session:
-                    # 从数据库数据创建会话对象（不加载完整日志，提高性能）
-                    session = InterviewSession.from_db_dict(db_session)
-                sessions.append(session)
-            return sessions
-        else:
-            # 仅返回内存中的会话
+        """Get all sessions (from database if available)"""
+        if not self.session_repo:
             return list(self._sessions.values())
+
+        db_sessions = self.session_repo.get_all(limit=1000)
+        sessions = []
+        for db_session in db_sessions:
+            session = self._sessions.get(db_session['session_id'])
+            if not session:
+                session = InterviewSession.from_db_dict(db_session)
+            sessions.append(session)
+        return sessions
     
     def export_session(self, session_id: str, file_path: str = None) -> Optional[str]:
-        """
-        Export session to JSON file
+        """Export session to JSON file"""
+        from interview_system.services.session_exporter import export_session as export_fn
 
-        Returns:
-            File path on success, None on failure
-        """
-        return self._exporter.export_session(session_id, file_path)
+        session = self.get_session(session_id)
+        if not session:
+            return None
+
+        return export_fn(
+            session_id=session.session_id,
+            user_name=session.user_name,
+            start_time=session.start_time,
+            end_time=session.end_time,
+            conversation_log=session.conversation_log,
+            file_path=file_path
+        )
 
     def _cleanup_expired_sessions(self):
-        """清理过期会话"""
+        """Clean up expired sessions"""
         timeout = WEB_CONFIG.session_timeout
         now = datetime.now()
-        
-        expired = []
-        for sid, session in self._sessions.items():
-            try:
-                start = datetime.strptime(session.start_time, "%Y-%m-%d %H:%M:%S")
-                if (now - start).total_seconds() > timeout:
-                    expired.append(sid)
-            except:
-                pass
-        
+
+        expired = [
+            sid for sid, session in self._sessions.items()
+            if self._is_expired(session, now, timeout)
+        ]
+
         for sid in expired:
             del self._sessions[sid]
             logger.log_session(sid, "清理过期会话")
-    
+
+    def _is_expired(self, session: InterviewSession, now: datetime, timeout: int) -> bool:
+        """Check if session is expired"""
+        try:
+            start = datetime.strptime(session.start_time, "%Y-%m-%d %H:%M:%S")
+            return (now - start).total_seconds() > timeout
+        except ValueError as e:
+            logger.warning(f"会话 {session.session_id} 时间格式错误: {e}")
+            return True
+
     def _remove_oldest_session(self):
-        """移除最旧的会话"""
+        """Remove oldest session"""
         if not self._sessions:
             return
 
-        oldest_sid = min(
-            self._sessions.keys(),
-            key=lambda x: self._sessions[x].start_time
-        )
+        oldest_sid = min(self._sessions.keys(), key=lambda x: self._sessions[x].start_time)
         del self._sessions[oldest_sid]
         logger.log_session(oldest_sid, "移除最旧会话")
 
@@ -414,24 +321,19 @@ class SessionManager:
         return self._statistics.get_session_count()
 
 
-# ----------------------------
-# 便捷函数
-# ----------------------------
+# Convenience functions
 def get_session_manager() -> SessionManager:
-    """获取会话管理器单例"""
+    """Get session manager singleton"""
     return SessionManager()
 
-
 def create_session(user_name: str = None) -> InterviewSession:
-    """创建新会话"""
+    """Create new session"""
     return get_session_manager().create_session(user_name)
 
-
 def get_session(session_id: str) -> Optional[InterviewSession]:
-    """获取会话"""
+    """Get session by ID"""
     return get_session_manager().get_session(session_id)
 
-
 def export_session(session_id: str, file_path: str = None) -> Optional[str]:
-    """导出会话"""
+    """Export session to file"""
     return get_session_manager().export_session(session_id, file_path)

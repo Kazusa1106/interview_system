@@ -51,43 +51,56 @@
 ### Prerequisites
 
 - **Python**: 3.10+
-- **Node.js**: 18+ (for frontend)
-- **OS**: Windows 10/11, macOS, Linux
+- **Node.js**: 18+
 
-### Backend Setup
+### One-Click Launch
 
 ```bash
-# Clone repository
 git clone https://github.com/username/interview_system.git
 cd interview_system
-
-# Create virtual environment
-python -m venv venv
-venv\Scripts\activate      # Windows
-source venv/bin/activate   # Linux/macOS
-
-# Install backend
-pip install -e ".[api]"
-
-# Start API server
-uvicorn interview_system.api.main:app --reload --port 8000
+python start.py
 ```
 
-### Frontend Setup
-
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Start dev server
-npm run dev
-```
+Auto-detects environment, installs dependencies, starts all services.
 
 **Access:**
 - Frontend: http://localhost:5173
+- Backend API: http://localhost:8000
 - API Docs: http://localhost:8000/docs
+
+Press `Ctrl+C` to stop all services.
+
+### Public Access (Tunnel)
+
+```bash
+python start.py --public
+```
+
+Exposes services via cloudflared/ngrok for remote access.
+
+**Requirements:**
+- [Cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/) (recommended, no signup)
+- [Ngrok](https://ngrok.com/download) (fallback)
+
+**Output:**
+```
+前端 公网: https://abc123.trycloudflare.com
+后端 公网: https://def456.trycloudflare.com
+```
+
+<details>
+<summary>Manual Setup</summary>
+
+```bash
+# Backend
+pip install -e ".[api]"
+uvicorn interview_system.api.main:app --reload --port 8000
+
+# Frontend (new terminal)
+cd frontend && npm install && npm run dev
+```
+
+</details>
 
 ---
 
@@ -187,56 +200,17 @@ VITE_API_URL=http://localhost:8000/api
 
 ## Development
 
-### Run Tests
-
 ```bash
-# Frontend tests
-cd frontend && npm test
+# Tests
+cd frontend && npm test    # Frontend
+pytest -q                  # Backend
 
-# Backend tests
-pytest -q
-```
-
-### Build Production
-
-```bash
-# Frontend
+# Build
 cd frontend && npm run build
-
-# Output: frontend/dist/
 ```
-
----
-
-## Design System
-
-### Colors
-
-| Token | Light | Dark |
-|-------|-------|------|
-| Background | `#F5F7FA` | `#0F172A` |
-| Card | `#FFFFFF` | `#1E293B` |
-| Primary | `#7C3AED` | `#7C3AED` |
-| Muted | `#64748B` | `#94A3B8` |
-
-### Spacing
-
-8px grid system: `4px`, `8px`, `16px`, `24px`, `32px`
-
-### Effects
-
-- Card shadow: `0 1px 3px rgba(0,0,0,0.05)`
-- Glassmorphism: `backdrop-filter: blur(10px)`
-- Hover lift: `transform: translateY(-2px)`
 
 ---
 
 ## License
 
-MIT License
-
----
-
-## Contributing
-
-Contributions welcome.
+MIT

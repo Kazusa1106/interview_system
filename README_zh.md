@@ -51,43 +51,56 @@
 ### 环境要求
 
 - **Python**: 3.10+
-- **Node.js**: 18+ (前端)
-- **操作系统**: Windows 10/11、macOS、Linux
+- **Node.js**: 18+
 
-### 后端启动
+### 一键启动
 
 ```bash
-# 克隆仓库
 git clone https://github.com/username/interview_system.git
 cd interview_system
-
-# 创建虚拟环境
-python -m venv venv
-venv\Scripts\activate      # Windows
-source venv/bin/activate   # Linux/macOS
-
-# 安装后端
-pip install -e ".[api]"
-
-# 启动API服务器
-uvicorn interview_system.api.main:app --reload --port 8000
+python start.py
 ```
 
-### 前端启动
-
-```bash
-cd frontend
-
-# 安装依赖
-npm install
-
-# 启动开发服务器
-npm run dev
-```
+自动检测环境、安装依赖、启动所有服务。
 
 **访问地址:**
 - 前端: http://localhost:5173
-- API文档: http://localhost:8000/docs
+- 后端 API: http://localhost:8000
+- API 文档: http://localhost:8000/docs
+
+按 `Ctrl+C` 停止所有服务。
+
+### 公网访问 (隧道)
+
+```bash
+python start.py --public
+```
+
+通过 cloudflared/ngrok 暴露服务，支持远程访问。
+
+**依赖:**
+- [Cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/) (推荐，无需注册)
+- [Ngrok](https://ngrok.com/download) (备选)
+
+**输出:**
+```
+前端 公网: https://abc123.trycloudflare.com
+后端 公网: https://def456.trycloudflare.com
+```
+
+<details>
+<summary>手动启动</summary>
+
+```bash
+# 后端
+pip install -e ".[api]"
+uvicorn interview_system.api.main:app --reload --port 8000
+
+# 前端 (新终端)
+cd frontend && npm install && npm run dev
+```
+
+</details>
 
 ---
 
@@ -187,56 +200,17 @@ VITE_API_URL=http://localhost:8000/api
 
 ## 开发指南
 
-### 运行测试
-
 ```bash
-# 前端测试
-cd frontend && npm test
+# 测试
+cd frontend && npm test    # 前端
+pytest -q                  # 后端
 
-# 后端测试
-pytest -q
-```
-
-### 生产构建
-
-```bash
-# 前端
+# 构建
 cd frontend && npm run build
-
-# 输出: frontend/dist/
 ```
-
----
-
-## 设计系统
-
-### 色彩
-
-| Token | 浅色 | 深色 |
-|-------|------|------|
-| 背景 | `#F5F7FA` | `#0F172A` |
-| 卡片 | `#FFFFFF` | `#1E293B` |
-| 主色 | `#7C3AED` | `#7C3AED` |
-| 次要 | `#64748B` | `#94A3B8` |
-
-### 间距
-
-8px网格系统: `4px`, `8px`, `16px`, `24px`, `32px`
-
-### 效果
-
-- 卡片阴影: `0 1px 3px rgba(0,0,0,0.05)`
-- 玻璃拟态: `backdrop-filter: blur(10px)`
-- 悬停上浮: `transform: translateY(-2px)`
 
 ---
 
 ## 许可证
 
-MIT License
-
----
-
-## 贡献指南
-
-欢迎贡献代码
+MIT

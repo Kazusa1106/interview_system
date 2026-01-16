@@ -89,6 +89,7 @@ function InterviewApp() {
                 onUndo={() => session && undo.mutate({ sessionId: session.id })}
                 onSkip={() => session && skip.mutate({ sessionId: session.id })}
                 onRestart={() => startSession.mutate(undefined)}
+                onStartInterview={() => startSession.mutate(undefined)}
                 canUndo={canUndo()}
                 canSkip={!!session}
                 isLoading={isLoading}

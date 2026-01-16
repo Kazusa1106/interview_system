@@ -37,7 +37,12 @@ class ResponseParser:
         follow_question = ResponseParser._clean_followup(follow_question)
 
         if not ResponseParser._validate_followup(follow_question, topic):
-            logger.log_api_call("generate_followup", True, duration, f"生成内容不符合要求: {follow_question[:50]}")
+            logger.log_api_call(
+                "generate_followup",
+                True,
+                duration,
+                f"生成内容不符合要求: {follow_question[:50]}",
+            )
             return None
 
         logger.log_api_call("generate_followup", True, duration)
@@ -47,14 +52,16 @@ class ResponseParser:
     @staticmethod
     def _extract_content(choice) -> str:
         """Extract content from choice"""
-        if not hasattr(choice, 'message') or not choice.message:
+        if not hasattr(choice, "message") or not choice.message:
             return ""
 
-        if hasattr(choice.message, 'content') and choice.message.content:
+        if hasattr(choice.message, "content") and choice.message.content:
             return choice.message.content.strip()
 
-        if hasattr(choice.message, 'reasoning_content'):
-            return ResponseParser._extract_from_reasoning(choice.message.reasoning_content)
+        if hasattr(choice.message, "reasoning_content"):
+            return ResponseParser._extract_from_reasoning(
+                choice.message.reasoning_content
+            )
 
         return ""
 
@@ -64,10 +71,10 @@ class ResponseParser:
         if not reasoning:
             return ""
 
-        lines = reasoning.strip().split('\n')
+        lines = reasoning.strip().split("\n")
         for line in reversed(lines):
             line = line.strip()
-            if line and len(line) >= 5 and not line.startswith(('<', '【', '```')):
+            if line and len(line) >= 5 and not line.startswith(("<", "【", "```")):
                 return line
 
         return ""
@@ -78,7 +85,7 @@ class ResponseParser:
         prefixes = ["追问：", "追问:", "问：", "问:", "**追问**：", "**追问**:"]
         for prefix in prefixes:
             if text.startswith(prefix):
-                text = text[len(prefix):].strip()
+                text = text[len(prefix) :].strip()
 
         if text.startswith('"') and text.endswith('"'):
             text = text[1:-1].strip()

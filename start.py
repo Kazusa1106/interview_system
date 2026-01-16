@@ -40,10 +40,10 @@ def check_python() -> bool:
     """检查 Python 版本"""
     log(1, 4, "检查 Python 环境", "wait")
     version = sys.version_info
-    if version >= (3, 10):
+    if version >= (3, 11):
         print(f"✓ Python {version.major}.{version.minor}")
         return True
-    print(f"✗ 需要 Python 3.10+，当前 {version.major}.{version.minor}")
+    print(f"✗ 需要 Python 3.11+，当前 {version.major}.{version.minor}")
     return False
 
 
@@ -52,10 +52,7 @@ def check_node() -> bool:
     log(2, 4, "检查 Node.js 环境", "wait")
     try:
         result = subprocess.run(
-            ["node", "--version"],
-            capture_output=True,
-            text=True,
-            shell=True
+            ["node", "--version"], capture_output=True, text=True, shell=True
         )
         if result.returncode == 0:
             print(f"✓ Node {result.stdout.strip()}")
@@ -68,17 +65,17 @@ def check_node() -> bool:
 
 def install_backend_deps() -> bool:
     """安装后端依赖"""
-    try:
-        import fastapi
-        import uvicorn
+    import importlib.util
+
+    if importlib.util.find_spec("fastapi") and importlib.util.find_spec("uvicorn"):
         return True
-    except ImportError:
-        print("    安装后端依赖...")
-        result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "-e", ".[api]", "-q"],
-            cwd=ROOT_DIR
-        )
-        return result.returncode == 0
+
+    print("    安装后端依赖...")
+    result = subprocess.run(
+        [sys.executable, "-m", "pip", "install", "-e", ".[api]", "-q"],
+        cwd=ROOT_DIR,
+    )
+    return result.returncode == 0
 
 
 def install_frontend_deps() -> bool:
@@ -87,11 +84,7 @@ def install_frontend_deps() -> bool:
     if node_modules.exists():
         return True
     print("    安装前端依赖...")
-    result = subprocess.run(
-        ["npm", "install"],
-        cwd=FRONTEND_DIR,
-        shell=True
-    )
+    result = subprocess.run(["npm", "install"], cwd=FRONTEND_DIR, shell=True)
     return result.returncode == 0
 
 
@@ -103,17 +96,24 @@ def start_backend() -> subprocess.Popen | None:
         src_dir = str(ROOT_DIR / "src")
         existing_pythonpath = env.get("PYTHONPATH", "")
         env["PYTHONPATH"] = (
-            f"{src_dir}{os.pathsep}{existing_pythonpath}" if existing_pythonpath else src_dir
+            f"{src_dir}{os.pathsep}{existing_pythonpath}"
+            if existing_pythonpath
+            else src_dir
         )
 
         proc = subprocess.Popen(
             [
-                sys.executable, "-m", "uvicorn",
+                sys.executable,
+                "-m",
+                "uvicorn",
                 "interview_system.api.main:app",
-                "--app-dir", src_dir,
-                "--host", "0.0.0.0",
-                "--port", str(BACKEND_PORT),
-                "--reload"
+                "--app-dir",
+                src_dir,
+                "--host",
+                "0.0.0.0",
+                "--port",
+                str(BACKEND_PORT),
+                "--reload",
             ],
             cwd=ROOT_DIR,
             env=env,
@@ -154,10 +154,7 @@ def check_tunnel_binary() -> str | None:
     for binary in ["cloudflared", "ngrok"]:
         try:
             result = subprocess.run(
-                [binary, "--version"],
-                capture_output=True,
-                shell=True,
-                timeout=3
+                [binary, "--version"], capture_output=True, shell=True, timeout=3
             )
             if result.returncode == 0:
                 return binary
@@ -169,6 +166,7 @@ def check_tunnel_binary() -> str | None:
 def install_cloudflared() -> bool:
     """自动安装 cloudflared (Windows: winget, macOS: brew, Linux: 下载二进制)"""
     import platform
+
     system = platform.system()
 
     print("    正在安装 cloudflared...")
@@ -176,9 +174,17 @@ def install_cloudflared() -> bool:
     if system == "Windows":
         # 尝试 winget
         result = subprocess.run(
-            ["winget", "install", "--id", "Cloudflare.cloudflared", "-e", "--accept-source-agreements", "--accept-package-agreements"],
+            [
+                "winget",
+                "install",
+                "--id",
+                "Cloudflare.cloudflared",
+                "-e",
+                "--accept-source-agreements",
+                "--accept-package-agreements",
+            ],
             capture_output=True,
-            shell=True
+            shell=True,
         )
         if result.returncode == 0:
             print("    cloudflared 安装成功 ✓")
@@ -196,7 +202,7 @@ def install_cloudflared() -> bool:
                 zip_path = Path(tmpdir) / "cloudflared.zip"
                 urllib.request.urlretrieve(url, zip_path)
 
-                with zipfile.ZipFile(zip_path, 'r') as zf:
+                with zipfile.ZipFile(zip_path, "r") as zf:
                     zf.extractall(tmpdir)
 
                 # 移动到用户目录
@@ -205,10 +211,13 @@ def install_cloudflared() -> bool:
                 exe_dst.parent.mkdir(parents=True, exist_ok=True)
 
                 import shutil
+
                 shutil.copy2(exe_src, exe_dst)
 
                 # 添加到 PATH (当前会话)
-                os.environ["PATH"] = str(exe_dst.parent) + os.pathsep + os.environ.get("PATH", "")
+                os.environ["PATH"] = (
+                    str(exe_dst.parent) + os.pathsep + os.environ.get("PATH", "")
+                )
 
                 print(f"    cloudflared 已安装到 {exe_dst} ✓")
                 print(f"    提示: 建议将 {exe_dst.parent} 添加到系统 PATH")
@@ -218,10 +227,7 @@ def install_cloudflared() -> bool:
             return False
 
     elif system == "Darwin":  # macOS
-        result = subprocess.run(
-            ["brew", "install", "cloudflared"],
-            capture_output=True
-        )
+        result = subprocess.run(["brew", "install", "cloudflared"], capture_output=True)
         if result.returncode == 0:
             print("    cloudflared 安装成功 ✓")
             return True
@@ -230,13 +236,16 @@ def install_cloudflared() -> bool:
 
     else:  # Linux
         import urllib.request
+
         url = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64"
         try:
             exe_dst = Path.home() / ".local" / "bin" / "cloudflared"
             exe_dst.parent.mkdir(parents=True, exist_ok=True)
             urllib.request.urlretrieve(url, exe_dst)
             exe_dst.chmod(0o755)
-            os.environ["PATH"] = str(exe_dst.parent) + os.pathsep + os.environ.get("PATH", "")
+            os.environ["PATH"] = (
+                str(exe_dst.parent) + os.pathsep + os.environ.get("PATH", "")
+            )
             print(f"    cloudflared 已安装到 {exe_dst} ✓")
             return True
         except Exception as e:
@@ -260,7 +269,9 @@ def ensure_tunnel_tool() -> str | None:
     print("\n自动安装失败，请手动安装:")
     print("  Windows: winget install cloudflare.cloudflared")
     print("  macOS: brew install cloudflared")
-    print("  Linux: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/")
+    print(
+        "  Linux: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/"
+    )
     return None
 
 
@@ -277,7 +288,7 @@ def start_tunnel(port: int, service_name: str) -> str | None:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                shell=True
+                shell=True,
             )
             processes.append(proc)
 
@@ -285,7 +296,7 @@ def start_tunnel(port: int, service_name: str) -> str | None:
             for _ in range(30):
                 if proc.stderr:
                     line = proc.stderr.readline()
-                    match = re.search(r'https://[a-z0-9-]+\.trycloudflare\.com', line)
+                    match = re.search(r"https://[a-z0-9-]+\.trycloudflare\.com", line)
                     if match:
                         url = match.group(0)
                         print(f"  {service_name} 公网: {url}")
@@ -298,7 +309,7 @@ def start_tunnel(port: int, service_name: str) -> str | None:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                shell=True
+                shell=True,
             )
             processes.append(proc)
 
@@ -306,7 +317,9 @@ def start_tunnel(port: int, service_name: str) -> str | None:
             for _ in range(30):
                 if proc.stdout:
                     line = proc.stdout.readline()
-                    match = re.search(r'https://[a-z0-9-]+\.(ngrok-free\.app|ngrok\.io)', line)
+                    match = re.search(
+                        r"https://[a-z0-9-]+\.(ngrok-free\.app|ngrok\.io)", line
+                    )
                     if match:
                         url = match.group(0)
                         print(f"  {service_name} 公网: {url}")
@@ -340,6 +353,7 @@ def ensure_env_files():
     backend_example = ROOT_DIR / ".env.example"
     if not backend_env.exists() and backend_example.exists():
         import shutil
+
         shutil.copy2(backend_example, backend_env)
         print("    已创建后端 .env 文件 (从 .env.example 复制)")
 
@@ -378,7 +392,9 @@ def update_frontend_api_url(backend_url: str):
 
 def main():
     parser = argparse.ArgumentParser(description="Interview System 启动器")
-    parser.add_argument('--public', action='store_true', help='启用公网访问 (cloudflared/ngrok)')
+    parser.add_argument(
+        "--public", action="store_true", help="启用公网访问 (cloudflared/ngrok)"
+    )
     args = parser.parse_args()
 
     print("=" * 50)

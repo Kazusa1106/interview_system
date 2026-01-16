@@ -16,19 +16,39 @@ export function ActionBar({
   canSkip = false,
 }: ActionBarProps) {
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-2" role="toolbar" aria-label="访谈操作">
       {onUndo && (
-        <Button variant="outline" size="sm" onClick={onUndo} disabled={!canUndo}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onUndo}
+          disabled={!canUndo}
+          aria-label="撤回上一条消息"
+          title="撤回 (Ctrl+Z)"
+        >
           撤回
         </Button>
       )}
       {onSkip && (
-        <Button variant="outline" size="sm" onClick={onSkip} disabled={!canSkip}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onSkip}
+          disabled={!canSkip}
+          aria-label="跳过当前问题"
+          title="跳过当前问题"
+        >
           跳过
         </Button>
       )}
       {onRestart && (
-        <Button variant="ghost" size="sm" onClick={onRestart}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onRestart}
+          aria-label="重新开始访谈"
+          title="重新开始 (Ctrl+R)"
+        >
           重新开始
         </Button>
       )}

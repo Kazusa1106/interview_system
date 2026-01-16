@@ -13,13 +13,18 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   });
 
   return (
-    <div className={cn('flex w-full slide-up', isUser ? 'justify-end' : 'justify-start')}>
+    <div
+      className={cn(
+        'flex w-full',
+        isUser ? 'justify-end slide-in-right' : 'justify-start slide-in-left'
+      )}
+    >
       <div
         className={cn(
-          'max-w-[80%] px-4 py-3 hover-lift',
+          'max-w-[80%] px-4 py-3 hover-lift transition-shadow duration-200',
           isUser
-            ? 'bg-primary text-primary-foreground rounded-2xl rounded-br-md'
-            : 'bg-card shadow-card rounded-2xl rounded-bl-md'
+            ? 'bg-primary text-primary-foreground rounded-2xl rounded-br-md hover:shadow-lg'
+            : 'bg-card shadow-card rounded-2xl rounded-bl-md hover:shadow-card-hover'
         )}
       >
         <p className="whitespace-pre-wrap break-words">{message.content}</p>

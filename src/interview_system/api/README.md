@@ -5,7 +5,7 @@ FastAPI backend for the interview system.
 ## Installation
 
 ```bash
-pip install -e ".[api]"
+pip install -e ".[dev,api]"
 ```
 
 ## Quick Start
@@ -50,13 +50,13 @@ Once running, visit:
 ```bash
 curl -X POST http://localhost:8000/api/session/start \
   -H "Content-Type: application/json" \
-  -d '{"user_name": "测试用户"}'
+  -d '{"user_name": "测试用户", "topics": null}'
 ```
 
 Response:
 ```json
 {
-  "id": "abc12345",
+  "id": "550e8400-e29b-41d4-a716-446655440000",
   "status": "active",
   "current_question": 0,
   "total_questions": 10,
@@ -68,7 +68,7 @@ Response:
 ### Send Message
 
 ```bash
-curl -X POST http://localhost:8000/api/session/abc12345/message \
+curl -X POST http://localhost:8000/api/session/550e8400-e29b-41d4-a716-446655440000/message \
   -H "Content-Type: application/json" \
   -d '{"text": "我认为教学应该以学生为中心"}'
 ```
@@ -93,20 +93,19 @@ src/interview_system/api/
 ├── deps.py          # Dependency injection
 ├── routes/
 │   ├── __init__.py
-│   └── session.py   # Session endpoints
+│   ├── session.py   # Session endpoints
+│   ├── interview.py # Interview endpoints
+│   └── health.py    # Health check
 └── schemas/
     ├── __init__.py
+    ├── common.py    # Error response schema
     ├── session.py   # Session models
     └── message.py   # Message models
 ```
 
-## Integration
+## App Factory
 
-The API integrates with existing core modules:
-- `interview_system.services.session_manager.SessionManager`
-- `interview_system.core.interview_engine.InterviewEngine`
-
-No changes to core logic required.
+`create_app(settings)` allows passing different settings in tests.
 
 ## CORS Configuration
 

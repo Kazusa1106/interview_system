@@ -35,8 +35,7 @@ class InterviewLogger:
         logger.handlers = []
 
         formatter = logging.Formatter(
-            LOG_CONFIG.log_format,
-            datefmt=LOG_CONFIG.date_format
+            LOG_CONFIG.log_format, datefmt=LOG_CONFIG.date_format
         )
 
         if LOG_CONFIG.log_to_console:
@@ -47,14 +46,13 @@ class InterviewLogger:
 
         if LOG_CONFIG.log_to_file:
             log_file = os.path.join(
-                LOG_DIR,
-                f"{name}_{datetime.now().strftime('%Y%m%d')}.log"
+                LOG_DIR, f"{name}_{datetime.now().strftime('%Y%m%d')}.log"
             )
             file_handler = RotatingFileHandler(
                 log_file,
                 maxBytes=LOG_CONFIG.max_file_size,
                 backupCount=LOG_CONFIG.backup_count,
-                encoding='utf-8'
+                encoding="utf-8",
             )
             file_handler.setFormatter(formatter)
             file_handler.setLevel(getattr(logging, LOG_CONFIG.level))
@@ -103,7 +101,9 @@ def log_api_call(api_name: str, success: bool, duration: float, error_msg: str =
     if success:
         logger.info(f"API调用成功 - {api_name} - 耗时: {duration:.2f}s")
     else:
-        logger.error(f"API调用失败 - {api_name} - 耗时: {duration:.2f}s - 错误: {error_msg}")
+        logger.error(
+            f"API调用失败 - {api_name} - 耗时: {duration:.2f}s - 错误: {error_msg}"
+        )
 
 
 def log_session(session_id: str, action: str, details: str = None):
@@ -125,4 +125,3 @@ def log_interview(session_id: str, event: str, data: dict = None):
 def get_logger(name: str = "interview") -> logging.Logger:
     """获取日志记录器（便捷函数）"""
     return InterviewLogger.get_logger(name)
-

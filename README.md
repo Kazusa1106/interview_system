@@ -4,7 +4,7 @@
 
 **AI-Powered Interview Platform for Holistic Education Assessment**
 
-[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![React](https://img.shields.io/badge/react-19.2-61dafb.svg)](https://react.dev/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-active-success.svg)]()
@@ -50,7 +50,7 @@
 
 ### Prerequisites
 
-- **Python**: 3.10+
+- **Python**: 3.11+
 - **Node.js**: 18+
 
 ### One-Click Launch
@@ -113,9 +113,11 @@ interview_system/
 │   │   ├── main.py           # App entry
 │   │   ├── routes/           # Endpoints
 │   │   └── schemas/          # Pydantic models
-│   ├── core/                 # Business logic
-│   ├── services/             # Session management
-│   ├── data/                 # Database layer
+│   ├── application/          # Application layer (use cases)
+│   ├── domain/               # Domain layer (entities/services)
+│   ├── infrastructure/       # Infrastructure (DB/cache/external)
+│   ├── config/               # Settings + logging
+│   ├── core/                 # Data/fixtures (e.g. questions)
 │   └── integrations/         # LLM providers
 ├── frontend/                 # React SPA
 │   ├── src/
@@ -151,7 +153,7 @@ interview_system/
 
 | Technology | Version | Purpose |
 |------------|---------|---------|
-| Python | 3.10+ | Runtime |
+| Python | 3.11+ | Runtime |
 | FastAPI | 0.110+ | REST API |
 | SQLite | - | Database |
 | Pydantic | 2.0+ | Validation |
@@ -164,11 +166,13 @@ interview_system/
 |--------|----------|-------------|
 | POST | `/api/session/start` | Create session |
 | GET | `/api/session/{id}` | Get session |
+| GET | `/api/session/{id}/messages` | Get messages |
 | POST | `/api/session/{id}/message` | Send message |
 | POST | `/api/session/{id}/undo` | Undo exchange |
 | POST | `/api/session/{id}/skip` | Skip question |
 | POST | `/api/session/{id}/restart` | Reset session |
 | GET | `/api/session/{id}/stats` | Get statistics |
+| DELETE | `/api/session/{id}` | Delete session |
 
 ---
 
@@ -181,6 +185,9 @@ interview_system/
 API_PROVIDER=deepseek
 API_KEY=your_api_key_here
 API_MODEL=deepseek-chat
+DATABASE_URL=sqlite+aiosqlite:///./interview_data.db
+LOG_LEVEL=INFO
+ALLOWED_ORIGINS=http://localhost:5173
 
 # Frontend (.env)
 VITE_API_URL=http://localhost:8000/api

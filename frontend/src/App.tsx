@@ -4,7 +4,7 @@ import { ThemeProvider } from '@/components/common/ThemeProvider';
 import { CommandPalette } from '@/components/common/CommandPalette';
 import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { Chatbot } from '@/components/chat/Chatbot';
+import { Chatbot, StatsSkeleton } from '@/components/chat';
 import { useInterviewStore, useCommandStore, useThemeStore } from '@/stores';
 import { useStartSession, useSendMessage, useUndo, useSkip, useSessionStats } from '@/hooks';
 
@@ -17,7 +17,7 @@ function InterviewApp() {
   const sendMessage = useSendMessage();
   const undo = useUndo();
   const skip = useSkip();
-  const { data: stats } = useSessionStats(session?.id || null);
+  const { data: stats, isLoading: statsLoading } = useSessionStats(session?.id || null);
 
   const commands = [
     { id: 'theme-light', label: '浅色模式', shortcut: '⌘1', onSelect: () => setMode('light') },
@@ -50,7 +50,7 @@ function InterviewApp() {
         placeholder="搜索命令..."
       />
 
-      <div className="flex min-h-screen flex-col">
+      <div className="flex min-h-screen flex-col fade-in">
         <Header
           title="AI 教育访谈系统"
           subtitle="智能对话式学习评估"
@@ -60,7 +60,7 @@ function InterviewApp() {
         <div className="flex flex-1">
           <Sidebar>
             <div className="space-y-4">
-              <div className="rounded-xl bg-card p-4 shadow-card">
+              <div className="rounded-xl bg-card p-4 shadow-card card-interactive">
                 <h3 className="mb-2 font-semibold">使用说明</h3>
                 <ul className="space-y-1 text-sm text-muted-foreground">
                   <li>• 输入回答后按 Enter 发送</li>
@@ -69,8 +69,10 @@ function InterviewApp() {
                 </ul>
               </div>
 
+              {session && statsLoading && <StatsSkeleton />}
+
               {stats && (
-                <div className="rounded-xl bg-card p-4 shadow-card">
+                <div className="rounded-xl bg-card p-4 shadow-card card-interactive scale-in">
                   <h3 className="mb-2 font-semibold">实时统计</h3>
                   <div className="space-y-1 text-sm">
                     <p>总消息: {stats.total_messages}</p>

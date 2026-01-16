@@ -68,6 +68,7 @@ site/
 helloagents/
 llmdoc/
 .claude/
+plan/
 
 # Gradio
 .gradio/

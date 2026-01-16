@@ -4,7 +4,7 @@
 
 **AI驱动的五育并举教育评估访谈平台**
 
-[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![React](https://img.shields.io/badge/react-19.2-61dafb.svg)](https://react.dev/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-active-success.svg)]()
@@ -50,7 +50,7 @@
 
 ### 环境要求
 
-- **Python**: 3.10+
+- **Python**: 3.11+
 - **Node.js**: 18+
 
 ### 一键启动
@@ -113,9 +113,11 @@ interview_system/
 │   │   ├── main.py           # 应用入口
 │   │   ├── routes/           # 路由端点
 │   │   └── schemas/          # Pydantic模型
-│   ├── core/                 # 业务逻辑
-│   ├── services/             # 会话管理
-│   ├── data/                 # 数据层
+│   ├── application/          # 应用层（用例）
+│   ├── domain/               # 领域层（实体/服务）
+│   ├── infrastructure/       # 基础设施（DB/缓存/外部）
+│   ├── config/               # 配置与日志
+│   ├── core/                 # 数据/题库（如 questions）
 │   └── integrations/         # LLM集成
 ├── frontend/                 # React SPA
 │   ├── src/
@@ -151,7 +153,7 @@ interview_system/
 
 | 技术 | 版本 | 用途 |
 |------|------|------|
-| Python | 3.10+ | 运行时 |
+| Python | 3.11+ | 运行时 |
 | FastAPI | 0.110+ | REST API |
 | SQLite | - | 数据库 |
 | Pydantic | 2.0+ | 数据验证 |
@@ -164,11 +166,13 @@ interview_system/
 |------|------|------|
 | POST | `/api/session/start` | 创建会话 |
 | GET | `/api/session/{id}` | 获取会话 |
+| GET | `/api/session/{id}/messages` | 获取消息 |
 | POST | `/api/session/{id}/message` | 发送消息 |
 | POST | `/api/session/{id}/undo` | 撤销交换 |
 | POST | `/api/session/{id}/skip` | 跳过问题 |
 | POST | `/api/session/{id}/restart` | 重置会话 |
 | GET | `/api/session/{id}/stats` | 获取统计 |
+| DELETE | `/api/session/{id}` | 删除会话 |
 
 ---
 
@@ -181,6 +185,9 @@ interview_system/
 API_PROVIDER=deepseek
 API_KEY=your_api_key_here
 API_MODEL=deepseek-chat
+DATABASE_URL=sqlite+aiosqlite:///./interview_data.db
+LOG_LEVEL=INFO
+ALLOWED_ORIGINS=http://localhost:5173
 
 # 前端 (.env)
 VITE_API_URL=http://localhost:8000/api

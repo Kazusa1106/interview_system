@@ -40,18 +40,28 @@ export function Chatbot({
   }, [messages]);
 
   return (
-    <div className="flex h-full flex-col gap-4">
+    <div className="flex h-full flex-col gap-4" role="region" aria-label="访谈对话区域">
       <ScrollArea className="flex-1" ref={scrollRef}>
-        <div className="flex flex-col gap-4 p-4">
+        <div
+          className="flex flex-col gap-4 p-4"
+          role="log"
+          aria-live="polite"
+          aria-label="对话消息列表"
+        >
           {isEmpty ? (
-            <div className="flex h-full min-h-[400px] flex-col items-center justify-center gap-6 text-center">
+            <div className="flex h-full min-h-[400px] flex-col items-center justify-center gap-6 text-center scale-in">
               <div className="space-y-2">
                 <h2 className="text-2xl font-semibold">欢迎使用 AI 教育访谈系统</h2>
                 <p className="text-muted-foreground">
                   点击下方按钮开始访谈，系统将引导你完成学习评估
                 </p>
               </div>
-              <Button size="lg" onClick={onStartInterview}>
+              <Button
+                size="lg"
+                onClick={onStartInterview}
+                className="btn-hover"
+                aria-label="开始新的访谈"
+              >
                 快速访谈
               </Button>
             </div>
@@ -60,7 +70,11 @@ export function Chatbot({
               {messages.map((msg) => (
                 <MessageBubble key={msg.id} message={msg} />
               ))}
-              {isLoading && <MessageSkeleton count={1} />}
+              {isLoading && (
+                <div aria-busy="true" aria-label="正在加载回复">
+                  <MessageSkeleton count={1} />
+                </div>
+              )}
             </>
           )}
         </div>

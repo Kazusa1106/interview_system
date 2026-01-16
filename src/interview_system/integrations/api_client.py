@@ -7,7 +7,6 @@ Unified API Client - Multi-provider LLM support
 import json
 import os
 import time
-from pathlib import Path
 from typing import Optional
 
 import interview_system.common.logger as logger
@@ -127,7 +126,9 @@ class UnifiedAPIClient:
             }
 
             if self.current_provider.provider_id == "baidu" and self.secret_key:
-                client_kwargs["default_headers"] = {"X-Bce-Signature-Key": self.secret_key}
+                client_kwargs["default_headers"] = {
+                    "X-Bce-Signature-Key": self.secret_key
+                }
 
             self.client = openai.OpenAI(**client_kwargs)
             self.is_available = True
@@ -153,17 +154,26 @@ class UnifiedAPIClient:
                 with open(ENV_FILE, "r", encoding="utf-8") as f:
                     for line in f:
                         # Skip API-related lines (will be rewritten)
-                        if not line.strip().startswith(("API_PROVIDER=", "API_KEY=", "API_MODEL=", "API_SECRET_KEY=")):
+                        if not line.strip().startswith(
+                            (
+                                "API_PROVIDER=",
+                                "API_KEY=",
+                                "API_MODEL=",
+                                "API_SECRET_KEY=",
+                            )
+                        ):
                             env_lines.append(line.rstrip())
 
             # Add API config
-            env_lines.extend([
-                "",
-                "# API Configuration",
-                f"API_PROVIDER={self.current_provider.provider_id}",
-                f"API_KEY={self.api_key}",
-                f"API_MODEL={self.model}",
-            ])
+            env_lines.extend(
+                [
+                    "",
+                    "# API Configuration",
+                    f"API_PROVIDER={self.current_provider.provider_id}",
+                    f"API_KEY={self.api_key}",
+                    f"API_MODEL={self.model}",
+                ]
+            )
 
             if self.current_provider.need_secret_key and self.secret_key:
                 env_lines.append(f"API_SECRET_KEY={self.secret_key}")
@@ -188,8 +198,16 @@ class UnifiedAPIClient:
             try:
                 with open(ENV_FILE, "r", encoding="utf-8") as f:
                     lines = [
-                        line for line in f
-                        if not line.strip().startswith(("API_PROVIDER=", "API_KEY=", "API_MODEL=", "API_SECRET_KEY="))
+                        line
+                        for line in f
+                        if not line.strip().startswith(
+                            (
+                                "API_PROVIDER=",
+                                "API_KEY=",
+                                "API_MODEL=",
+                                "API_SECRET_KEY=",
+                            )
+                        )
                     ]
                 with open(ENV_FILE, "w", encoding="utf-8") as f:
                     f.writelines(lines)
@@ -205,11 +223,7 @@ class UnifiedAPIClient:
         return None
 
     def initialize(
-        self,
-        provider_id: str,
-        api_key: str,
-        secret_key: str = None,
-        model: str = None
+        self, provider_id: str, api_key: str, secret_key: str = None, model: str = None
     ) -> bool:
         """Initialize API client with credentials"""
         provider = self._validate_credentials(provider_id, api_key, secret_key)
@@ -228,7 +242,9 @@ class UnifiedAPIClient:
         self._set_active_state(client, provider, api_key, secret_key, target_model)
         return True
 
-    def _set_active_state(self, client, provider, api_key: str, secret_key: str, model: str):
+    def _set_active_state(
+        self, client, provider, api_key: str, secret_key: str, model: str
+    ):
         """Set active client state"""
         self.client = client
         self.current_provider = provider
@@ -284,7 +300,7 @@ class UnifiedAPIClient:
             client.chat.completions.create(
                 model=model,
                 messages=[{"role": "user", "content": "hi"}],
-                max_tokens=TEST_CALL_TOKENS
+                max_tokens=TEST_CALL_TOKENS,
             )
             return True
         except Exception as e:
@@ -293,10 +309,7 @@ class UnifiedAPIClient:
             return False
 
     def generate_followup(
-        self,
-        answer: str,
-        topic: dict,
-        conversation_log: list = None
+        self, answer: str, topic: dict, conversation_log: list = None
     ) -> Optional[str]:
         """Generate intelligent followup question"""
         if not self.is_available and not self._lazy_initialized:
@@ -309,7 +322,9 @@ class UnifiedAPIClient:
         if len(valid_answer) < 2:
             return None
 
-        prompt = PromptBuilder.build_followup_prompt(valid_answer, topic, conversation_log)
+        prompt = PromptBuilder.build_followup_prompt(
+            valid_answer, topic, conversation_log
+        )
         return self._call_with_retry(prompt, topic)
 
     def _call_with_retry(self, prompt: str, topic: dict) -> Optional[str]:
@@ -323,11 +338,11 @@ class UnifiedAPIClient:
                     model=self.model,
                     messages=[
                         {"role": "system", "content": FOLLOWUP_SYSTEM_PROMPT},
-                        {"role": "user", "content": prompt.strip()}
+                        {"role": "user", "content": prompt.strip()},
                     ],
                     max_tokens=MAX_FOLLOWUP_TOKENS,
                     temperature=0.7,
-                    n=1
+                    n=1,
                 )
 
                 elapsed_ms = int((time.time() - start_time) * 1000)
@@ -337,10 +352,12 @@ class UnifiedAPIClient:
                     extra={
                         "provider": self.current_provider.name,
                         "model": self.model,
-                        "elapsed_ms": elapsed_ms
-                    }
+                        "elapsed_ms": elapsed_ms,
+                    },
                 )
-                return ResponseParser.extract_followup(response, topic, elapsed_ms / 1000)
+                return ResponseParser.extract_followup(
+                    response, topic, elapsed_ms / 1000
+                )
 
             except Exception as e:
                 elapsed_ms = int((time.time() - start_time) * 1000)
@@ -349,11 +366,11 @@ class UnifiedAPIClient:
                     "generate_followup",
                     False,
                     elapsed_ms / 1000,
-                    f"第{attempt + 1}次尝试失败: {last_error[:50]}"
+                    f"第{attempt + 1}次尝试失败: {last_error[:50]}",
                 )
 
                 if attempt < self.max_retries - 1:
-                    wait_time = self.retry_delay * (2 ** attempt)
+                    wait_time = self.retry_delay * (2**attempt)
                     logger.debug(f"等待 {wait_time:.1f}s 后重试...")
                     time.sleep(wait_time)
 

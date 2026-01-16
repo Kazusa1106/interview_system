@@ -24,16 +24,15 @@ def get_available_providers() -> Dict[str, APIProviderConfig]:
 
 
 def initialize_api(
-    provider_id: str,
-    api_key: str,
-    secret_key: str = None,
-    model: str = None
+    provider_id: str, api_key: str, secret_key: str = None, model: str = None
 ) -> bool:
     """Initialize global API client"""
     return get_api_client().initialize(provider_id, api_key, secret_key, model)
 
 
-def generate_followup(answer: str, topic: dict, conversation_log: list = None) -> Optional[str]:
+def generate_followup(
+    answer: str, topic: dict, conversation_log: list = None
+) -> Optional[str]:
     """Generate intelligent followup (convenience function)"""
     return get_api_client().generate_followup(answer, topic, conversation_log)
 

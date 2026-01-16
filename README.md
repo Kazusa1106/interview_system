@@ -74,37 +74,23 @@ python --version  # Must be 3.10+
 
 ### Install & Run
 
-**Method 1: One-line install (Recommended)**
-
 ```bash
-# Clone and install
+# Clone repository
 git clone https://github.com/username/interview_system.git
 cd interview_system
+
+# Create virtual environment (recommended)
+python -m venv venv
+venv\Scripts\activate      # Windows
+source venv/bin/activate   # Linux/macOS
+
+# Install in editable mode (required)
 pip install -e .
 
 # Run (choose one)
 interview          # Interactive mode selector
 interview-web      # Direct web mode
 interview-admin    # Admin dashboard
-```
-
-**Method 2: Traditional install**
-
-```bash
-# Clone repository
-git clone https://github.com/username/interview_system.git
-cd interview_system
-
-# Create virtual environment (optional but recommended)
-python -m venv venv
-venv\Scripts\activate      # Windows
-source venv/bin/activate   # Linux/macOS
-
-# Install dependencies
-pip install .
-
-# Run application
-python -m interview_system
 ```
 
 ---
@@ -206,7 +192,7 @@ WEB_CONFIG = WebConfig(
 ### Run Modes
 
 ```bash
-python -m interview_system
+interview  # Select mode after launch
 ```
 
 Select mode:
@@ -218,10 +204,10 @@ Select mode:
 
 ```bash
 # Method 1: Select mode 3 at startup
-python -m interview_system
+interview
 
 # Method 2: Direct launch
-python -m interview_system.app.admin
+interview-admin
 
 # Method 3: Windows script
 scripts\start_admin.bat
@@ -307,9 +293,8 @@ Generate visual reports from admin dashboard:
 
 ```
 interview_system/
-├── interview_system/          # Bootstrap package (python -m entry)
 ├── src/
-│   └── interview_system/      # Core implementation
+│   └── interview_system/      # Core implementation (src-layout)
 │       ├── app/               # Application layer
 │       ├── ui/                # User interfaces
 │       ├── core/              # Business logic
@@ -336,8 +321,8 @@ interview_system/
 ### Module Dependencies
 
 ```
-python -m interview_system
-  └── app/main.py
+interview (CLI entry point)
+  └── src/interview_system/app/main.py
         ├── ui/web_ui.py (Web interface)
         ├── ui/admin_ui.py (Admin dashboard)
         ├── core/interview_engine.py

@@ -74,37 +74,23 @@ python --version  # 必须是 3.10+
 
 ### 安装与运行
 
-**方式一：一键安装（推荐）**
-
 ```bash
-# 克隆并安装
+# 克隆仓库
 git clone https://github.com/username/interview_system.git
 cd interview_system
+
+# 创建虚拟环境（推荐）
+python -m venv venv
+venv\Scripts\activate      # Windows
+source venv/bin/activate   # Linux/macOS
+
+# 安装为可编辑模式（必需）
 pip install -e .
 
 # 运行（三选一）
 interview          # 交互式模式选择
 interview-web      # 直接启动Web模式
 interview-admin    # 管理后台
-```
-
-**方式二：传统安装**
-
-```bash
-# 克隆仓库
-git clone https://github.com/username/interview_system.git
-cd interview_system
-
-# 创建虚拟环境（可选但推荐）
-python -m venv venv
-venv\Scripts\activate      # Windows
-source venv/bin/activate   # Linux/macOS
-
-# 安装依赖
-pip install .
-
-# 运行应用
-python -m interview_system
 ```
 
 ---
@@ -206,7 +192,7 @@ WEB_CONFIG = WebConfig(
 ### 运行模式
 
 ```bash
-python -m interview_system
+interview  # 启动后选择模式
 ```
 
 选择模式：
@@ -218,10 +204,10 @@ python -m interview_system
 
 ```bash
 # 方式一：启动时选择模式3
-python -m interview_system
+interview
 
 # 方式二：直接启动
-python -m interview_system.app.admin
+interview-admin
 
 # 方式三：Windows脚本
 scripts\start_admin.bat
@@ -307,9 +293,8 @@ scripts\start_admin.bat
 
 ```
 interview_system/
-├── interview_system/          # 启动包 (python -m 入口)
 ├── src/
-│   └── interview_system/      # 核心实现
+│   └── interview_system/      # 核心实现 (src-layout)
 │       ├── app/               # 应用层
 │       ├── ui/                # 用户界面
 │       ├── core/              # 业务逻辑
@@ -336,8 +321,8 @@ interview_system/
 ### 模块依赖
 
 ```
-python -m interview_system
-  └── app/main.py
+interview (CLI entry point)
+  └── src/interview_system/app/main.py
         ├── ui/web_ui.py (Web界面)
         ├── ui/admin_ui.py (管理后台)
         ├── core/interview_engine.py

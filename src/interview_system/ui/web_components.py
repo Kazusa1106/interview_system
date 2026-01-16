@@ -15,15 +15,15 @@ except ImportError:
 
 
 def create_header() -> "gr.HTML":
-    """Create WeChat-style header"""
+    """Create modern professional header"""
     return gr.HTML(
         """
-        <div class="wechat-topbar">
-            <p class="wechat-title">大学生五育并举访谈</p>
-            <p class="wechat-subtitle">像微信一样聊天式访谈，放松分享真实经历与感受</p>
+        <div class="app-topbar">
+            <p class="app-title">大学生五育并举访谈</p>
+            <p class="app-subtitle">专业的访谈系统，帮助您轻松分享真实经历与感受</p>
         </div>
         """,
-        elem_id="wechat_header"
+        elem_id="interview_header"
     )
 
 
@@ -34,7 +34,7 @@ def create_chatbot() -> "gr.Chatbot":
         height=500,
         show_label=False,
         avatar_images=(None, "https://em-content.zobj.net/source/twitter/376/robot_1f916.png"),
-        elem_id="wechat_chat"
+        elem_id="interview_chat"
     )
 
 
@@ -52,7 +52,7 @@ def create_input_area() -> Tuple["gr.Textbox", "gr.Button"]:
         "发送",
         variant="primary",
         scale=1,
-        elem_id="wechat_send_btn"
+        elem_id="interview_send_btn"
     )
     return textbox, button
 

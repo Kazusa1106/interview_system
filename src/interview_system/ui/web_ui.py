@@ -117,13 +117,13 @@ def create_web_interface():
             with gr.Column(scale=3):
                 chatbot = create_chatbot()
 
-                with gr.Row(elem_id="wechat_input_bar"):
+                with gr.Row(elem_id="interview_input_bar"):
                     msg, submit_btn = create_input_area()
 
-                with gr.Row(elem_id="wechat_action_bar"):
+                with gr.Row(elem_id="interview_action_bar"):
                     undo_btn, skip_btn, refresh_btn = create_action_buttons()
 
-            with gr.Column(scale=1, elem_id="wechat_sidebar"):
+            with gr.Column(scale=1, elem_id="interview_sidebar"):
                 instructions, stats_display = create_sidebar()
 
         _register_events(demo, {

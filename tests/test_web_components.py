@@ -26,7 +26,7 @@ class TestComponentCreation:
 
         header = create_header()
         assert isinstance(header, gr.HTML)
-        assert header.elem_id == "wechat_header"
+        assert header.elem_id == "interview_header"
 
     def test_create_chatbot_returns_configured_chatbot(self):
         from interview_system.ui.web_components import create_chatbot
@@ -35,14 +35,7 @@ class TestComponentCreation:
         assert isinstance(chatbot, gr.Chatbot)
         assert chatbot.height == 500
         assert chatbot.show_label is False
-        assert chatbot.bubble_full_width is False
-        assert chatbot.elem_id == "wechat_chat"
-
-    def test_create_progress_display_returns_html(self):
-        from interview_system.ui.web_components import create_progress_display
-
-        progress = create_progress_display()
-        assert isinstance(progress, gr.HTML)
+        assert chatbot.elem_id == "interview_chat"
 
     def test_create_input_area_returns_textbox_and_button(self):
         from interview_system.ui.web_components import create_input_area
@@ -53,7 +46,7 @@ class TestComponentCreation:
         assert textbox.show_label is False
         assert textbox.lines == 2
         assert textbox.max_lines == 5
-        assert button.elem_id == "wechat_send_btn"
+        assert button.elem_id == "interview_send_btn"
 
     def test_create_action_buttons_returns_three_buttons(self):
         from interview_system.ui.web_components import create_action_buttons

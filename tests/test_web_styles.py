@@ -1,7 +1,7 @@
 """Tests for web_styles module"""
 
 import pytest
-from interview_system.ui.web_styles import get_custom_css, WECHAT_CSS
+from interview_system.ui.web_styles import get_custom_css, MODERN_CSS
 
 
 def test_get_custom_css_returns_string():
@@ -10,10 +10,10 @@ def test_get_custom_css_returns_string():
     assert isinstance(result, str)
 
 
-def test_get_custom_css_returns_wechat_css():
-    """get_custom_css() returns WECHAT_CSS constant"""
+def test_get_custom_css_returns_modern_css():
+    """get_custom_css() returns MODERN_CSS constant"""
     result = get_custom_css()
-    assert result == WECHAT_CSS
+    assert result == MODERN_CSS
 
 
 def test_get_custom_css_not_empty():
@@ -22,17 +22,17 @@ def test_get_custom_css_not_empty():
     assert len(result) > 0
 
 
-def test_wechat_css_contains_root_variables():
-    """WECHAT_CSS contains CSS root variables"""
+def test_modern_css_contains_root_variables():
+    """MODERN_CSS contains CSS root variables"""
     css = get_custom_css()
     assert ":root" in css
-    assert "--wechat-bg" in css
-    assert "--wechat-green" in css
+    assert "--app-bg" in css
+    assert "--app-primary" in css
 
 
-def test_wechat_css_contains_chat_styles():
-    """WECHAT_CSS contains chat component styles"""
+def test_modern_css_contains_chat_styles():
+    """MODERN_CSS contains chat component styles"""
     css = get_custom_css()
-    assert "#wechat_chat" in css
-    assert "#wechat_input_bar" in css
-    assert "#wechat_send_btn" in css
+    assert "#interview_chat" in css
+    assert "#interview_input_bar" in css
+    assert "#interview_send_btn" in css

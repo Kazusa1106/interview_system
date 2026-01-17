@@ -39,6 +39,8 @@
 - 命令面板 (Ctrl+K)
 - 玻璃拟态效果
 - 微交互动画
+- PWA支持 (离线可用)
+- 性能监控 (Web Vitals)
 
 </td>
 </tr>
@@ -130,7 +132,6 @@ interview_system/
 │   │   ├── services/         # API客户端
 │   │   └── types/            # TypeScript类型
 │   └── package.json
-└── llmdoc/                   # LLM文档
 ```
 
 ---
@@ -148,6 +149,9 @@ interview_system/
 | Tailwind CSS | 3.4 | 样式系统 |
 | Zustand | 5.0 | 状态管理 |
 | TanStack Query | 5.90 | 数据获取 |
+| vite-plugin-pwa | 1.2 | PWA支持 |
+| workbox-window | 7.4 | Service Worker |
+| web-vitals | 5.1 | 性能指标 |
 
 ### 后端
 

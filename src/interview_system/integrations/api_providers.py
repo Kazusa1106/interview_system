@@ -9,6 +9,7 @@ from typing import Dict, List
 @dataclass
 class APIProviderConfig:
     """API提供商配置"""
+
     name: str
     provider_id: str
     base_url: str
@@ -27,7 +28,7 @@ API_PROVIDERS: Dict[str, APIProviderConfig] = {
         default_model="deepseek-chat",
         api_key_name="API Key",
         models=["deepseek-chat"],
-        website="https://platform.deepseek.com/"
+        website="https://platform.deepseek.com/",
     ),
     "openai": APIProviderConfig(
         name="OpenAI (ChatGPT)",
@@ -36,7 +37,7 @@ API_PROVIDERS: Dict[str, APIProviderConfig] = {
         default_model="gpt-3.5-turbo",
         api_key_name="API Key",
         models=["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo", "gpt-4o", "gpt-4o-mini"],
-        website="https://platform.openai.com/"
+        website="https://platform.openai.com/",
     ),
     "qwen": APIProviderConfig(
         name="通义千问 (阿里)",
@@ -45,7 +46,7 @@ API_PROVIDERS: Dict[str, APIProviderConfig] = {
         default_model="qwen-turbo",
         api_key_name="API Key",
         models=["qwen-turbo", "qwen-plus", "qwen-max"],
-        website="https://dashscope.console.aliyun.com/"
+        website="https://dashscope.console.aliyun.com/",
     ),
     "zhipu": APIProviderConfig(
         name="智谱AI (GLM)",
@@ -54,7 +55,7 @@ API_PROVIDERS: Dict[str, APIProviderConfig] = {
         default_model="glm-4-flash",
         api_key_name="API Key",
         models=["glm-4-flash", "glm-4-air", "glm-4"],
-        website="https://open.bigmodel.cn/"
+        website="https://open.bigmodel.cn/",
     ),
     "baidu": APIProviderConfig(
         name="百度千帆 (文心一言)",
@@ -64,6 +65,6 @@ API_PROVIDERS: Dict[str, APIProviderConfig] = {
         api_key_name="Access Key",
         need_secret_key=True,
         models=["ernie-3.5-8k", "ernie-4.0-8k", "ernie-speed-8k"],
-        website="https://qianfan.baidubce.com/"
+        website="https://qianfan.baidubce.com/",
     ),
 }

@@ -6,7 +6,7 @@ from typing import Optional
 
 from interview_system.integrations.prompt_templates import (
     FOLLOWUP_USER_TEMPLATE,
-    TONE_MAP
+    TONE_MAP,
 )
 
 
@@ -14,7 +14,9 @@ class PromptBuilder:
     """Builds prompts for followup question generation"""
 
     @staticmethod
-    def build_followup_prompt(answer: str, topic: dict, conversation_log: list = None) -> str:
+    def build_followup_prompt(
+        answer: str, topic: dict, conversation_log: list = None
+    ) -> str:
         """
         Build prompt for followup generation
 
@@ -30,7 +32,9 @@ class PromptBuilder:
         scene, edu_type = topic_name.split("-", 1) if "-" in topic_name else ("", "")
         original_question = topic.get("questions", [""])[0]
 
-        history_context = PromptBuilder._build_history_context(conversation_log, topic_name)
+        history_context = PromptBuilder._build_history_context(
+            conversation_log, topic_name
+        )
         tone_guide = TONE_MAP.get(edu_type, "专业而亲和，像记者采访一样")
 
         return FOLLOWUP_USER_TEMPLATE.format(
@@ -39,11 +43,13 @@ class PromptBuilder:
             original_question=original_question,
             history_context=history_context,
             answer=answer,
-            tone_guide=tone_guide
+            tone_guide=tone_guide,
         )
 
     @staticmethod
-    def _build_history_context(conversation_log: Optional[list], topic_name: str) -> str:
+    def _build_history_context(
+        conversation_log: Optional[list], topic_name: str
+    ) -> str:
         """Build conversation history context"""
         if not conversation_log:
             return ""
@@ -61,7 +67,9 @@ class PromptBuilder:
             if "核心" in q_type:
                 history_parts.append(f"【核心问题】{q_text}\n【回答】{ans}")
             elif "追问" in q_type:
-                history_parts.append(f"【追问{len(history_parts)}】{q_text}\n【回答】{ans}")
+                history_parts.append(
+                    f"【追问{len(history_parts)}】{q_text}\n【回答】{ans}"
+                )
 
         if history_parts:
             return "\n\n【对话历史】\n" + "\n\n".join(history_parts)

@@ -26,6 +26,8 @@ env/
 .DS_Store
 Thumbs.db
 Desktop.ini
+nul
+NUL
 
 # Project Runtime
 logs/
@@ -66,6 +68,7 @@ site/
 helloagents/
 llmdoc/
 .claude/
+plan/
 
 # Gradio
 .gradio/

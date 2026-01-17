@@ -8,11 +8,11 @@ version = "2.0.0"
 description = "AI-Powered Interview Platform for Holistic Education Assessment"
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
     {name = "Interview System Team"}
 ]
-keywords = ["interview", "ai", "education", "llm", "gradio"]
+keywords = ["interview", "ai", "education", "llm"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Education",
@@ -29,21 +29,33 @@ classifiers = [
 
 dependencies = [
     "openai>=1.0.0",
-    "gradio>=4.0.0",
-    "qrcode[pil]>=7.0",
     "python-dotenv>=1.0.0",
+    "pydantic-settings>=2.2.1",
+    "sqlalchemy[asyncio]>=2.0.0",
+    "aiosqlite>=0.20.0",
+    "structlog>=24.0.0",
+    "cachetools>=5.3.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
+    "pytest-asyncio>=0.23.0",
+    "httpx>=0.27.0",
+    "ruff>=0.9.0",
+    "mypy>=1.8.0",
+    "types-cachetools>=6.2.0",
+]
+api = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+    "pydantic>=2.0.0",
 ]
 
 [project.scripts]
-interview = "interview_system.app.main:main"
-interview-web = "interview_system.app.main:run_web"
-interview-admin = "interview_system.app.admin:main"
+interview = "interview_system.api.run:main"
+interview-api = "interview_system.api.run:main"
 
 [project.urls]
 Homepage = "https://github.com/username/interview_system"
@@ -60,3 +72,20 @@ where = ["src"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["interview_system"]
+omit = [
+    "src/interview_system/integrations/*",
+    "src/interview_system/common/logger.py",
+    "src/interview_system/core/questions.py",
+]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src"]
+ignore_missing_imports = true
+no_implicit_optional = false
+warn_unused_ignores = true
+warn_redundant_casts = true
+exclude = "(src/interview_system/integrations/|src/interview_system/common/logger\\.py|src/interview_system/core/questions\\.py)"

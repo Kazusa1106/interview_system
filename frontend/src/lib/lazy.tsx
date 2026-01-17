@@ -1,7 +1,12 @@
-import { lazy, Suspense, type ComponentType } from 'react';
+import {
+  lazy,
+  Suspense,
+  type ComponentType,
+  type ReactNode,
+} from 'react';
 
 interface LazyComponentProps {
-  fallback?: React.ReactNode;
+  fallback?: ReactNode;
 }
 
 function DefaultFallback() {
@@ -12,16 +17,17 @@ function DefaultFallback() {
   );
 }
 
-export function lazyLoad<T extends ComponentType<unknown>>(
-  importFn: () => Promise<{ default: T }>,
-  fallback?: React.ReactNode
+export function lazyLoad<P extends object>(
+  importFn: () => Promise<{ default: ComponentType<P> }>,
+  fallback?: ReactNode
 ) {
   const LazyComponent = lazy(importFn);
 
-  return function LazyWrapper(props: React.ComponentProps<T> & LazyComponentProps) {
+  return function LazyWrapper(props: LazyComponentProps & P) {
+    const { fallback: fallbackProp, ...rest } = props;
     return (
-      <Suspense fallback={fallback ?? props.fallback ?? <DefaultFallback />}>
-        <LazyComponent {...props} />
+      <Suspense fallback={fallback ?? fallbackProp ?? <DefaultFallback />}>
+        <LazyComponent {...rest} />
       </Suspense>
     );
   };

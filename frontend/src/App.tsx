@@ -77,8 +77,8 @@ function InterviewApp() {
                 <div className="rounded-xl bg-card p-4 shadow-card card-interactive scale-in">
                   <h3 className="mb-2 font-semibold">实时统计</h3>
                   <div className="space-y-1 text-sm">
-                    <p>总消息: {stats.total_messages}</p>
-                    <p>平均响应: {stats.average_response_time.toFixed(1)}s</p>
+                    <p>总消息: {stats.totalMessages}</p>
+                    <p>平均响应: {stats.averageResponseTime.toFixed(1)}s</p>
                   </div>
                 </div>
               )}

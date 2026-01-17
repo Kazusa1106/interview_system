@@ -11,10 +11,10 @@ vi.mock('@/services/api', () => ({
         session: {
           id: 'test-session',
           status: 'active',
-          current_question: 0,
-          total_questions: 6,
-          created_at: Date.now(),
-          user_name: '访谈者_test-session',
+          currentQuestion: 0,
+          totalQuestions: 6,
+          createdAt: Date.now(),
+          userName: '访谈者_test-session',
         },
         messages: [],
       })
@@ -28,11 +28,11 @@ vi.mock('@/services/api', () => ({
     ),
     getStats: vi.fn(() =>
       Promise.resolve({
-        total_messages: 0,
-        user_messages: 0,
-        assistant_messages: 0,
-        average_response_time: 0,
-        duration_seconds: 0,
+        totalMessages: 0,
+        userMessages: 0,
+        assistantMessages: 0,
+        averageResponseTime: 0,
+        durationSeconds: 0,
       })
     ),
   },

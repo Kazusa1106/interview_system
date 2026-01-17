@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { lazyLoad } from "@/lib/lazy";
 import { Command, Share2 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 const LazyQRCodeDialog = lazyLoad(
   () =>
@@ -18,6 +18,21 @@ interface HeaderProps {
 
 export function Header({ title, subtitle, onCommandOpen }: HeaderProps) {
   const [shareOpen, setShareOpen] = useState(false);
+  const didWarmupShare = useRef(false);
+  const didWarmupCommand = useRef(false);
+
+  const warmupShare = () => {
+    if (didWarmupShare.current) return;
+    didWarmupShare.current = true;
+    void import("@/components/QRCodeDialog");
+    void import("qrcode.react");
+  };
+
+  const warmupCommand = () => {
+    if (didWarmupCommand.current) return;
+    didWarmupCommand.current = true;
+    void import("@/components/common/CommandPalette");
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -34,6 +49,8 @@ export function Header({ title, subtitle, onCommandOpen }: HeaderProps) {
             variant="outline"
             size="sm"
             onClick={() => setShareOpen(true)}
+            onPointerEnter={warmupShare}
+            onFocus={warmupShare}
             className="gap-2"
           >
             <Share2 className="h-4 w-4" />
@@ -44,6 +61,8 @@ export function Header({ title, subtitle, onCommandOpen }: HeaderProps) {
             variant="outline"
             size="sm"
             onClick={onCommandOpen}
+            onPointerEnter={warmupCommand}
+            onFocus={warmupCommand}
             className="gap-2"
           >
             <Command className="h-4 w-4" />

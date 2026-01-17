@@ -39,6 +39,8 @@
 - Command Palette (Ctrl+K)
 - Glassmorphism effects
 - Micro-interactions
+- PWA support (offline-ready)
+- Performance monitoring (Web Vitals)
 
 </td>
 </tr>
@@ -130,7 +132,6 @@ interview_system/
 │   │   ├── services/         # API client
 │   │   └── types/            # TypeScript types
 │   └── package.json
-└── llmdoc/                   # LLM documentation
 ```
 
 ---
@@ -148,6 +149,9 @@ interview_system/
 | Tailwind CSS | 3.4 | Styling |
 | Zustand | 5.0 | State management |
 | TanStack Query | 5.90 | Data fetching |
+| vite-plugin-pwa | 1.2 | PWA support |
+| workbox-window | 7.4 | Service Worker |
+| web-vitals | 5.1 | Performance metrics |
 
 ### Backend
 

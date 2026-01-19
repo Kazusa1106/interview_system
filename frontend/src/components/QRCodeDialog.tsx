@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { lazyLoad } from "@/lib/lazy";
 import { publicUrlApi } from "@/services/api";
+import { logError } from "@/services/logger";
 import type { PublicUrlResponse } from "@/types";
 
 const LazyQRCodeSVG = lazyLoad(() =>
@@ -57,7 +58,7 @@ export function QRCodeDialog({ open, onOpenChange }: QRCodeDialogProps) {
       await navigator.clipboard.writeText(url);
       setCopyError(null);
     } catch (e) {
-      console.error('[QRCodeDialog] 复制失败:', e);
+      logError("QRCodeDialog", "复制失败", e);
       setCopyError("复制失败，请手动复制。");
     }
   }, [data?.url]);

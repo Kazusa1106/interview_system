@@ -1,0 +1,6 @@
+"""通用常量。"""
+
+MAX_FOLLOWUP_TOKENS: int = 120
+TEST_CALL_TOKENS: int = 5
+DEFAULT_API_PORT: int = 8000
+

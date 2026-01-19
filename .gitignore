@@ -71,6 +71,8 @@ helloagents/
 llmdoc/
 .claude/
 plan/
+.ccb_config/
 
 # Gradio
 .gradio/
+.ace-tool/

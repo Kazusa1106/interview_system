@@ -21,6 +21,8 @@ def find_project_root(start: Optional[Path] = None) -> Path:
     判定标记（任一命中即视为根）：
     - .spec-workflow/ 目录
     - requirements.txt 文件
+    - pyproject.toml 文件
+    - .git/ 目录
     """
     current = (start or Path(__file__)).resolve()
     if current.is_file():
@@ -30,6 +32,10 @@ def find_project_root(start: Optional[Path] = None) -> Path:
         if (parent / ".spec-workflow").exists():
             return parent
         if (parent / "requirements.txt").exists():
+            return parent
+        if (parent / "pyproject.toml").exists():
+            return parent
+        if (parent / ".git").exists():
             return parent
 
     # 兜底：返回起点目录

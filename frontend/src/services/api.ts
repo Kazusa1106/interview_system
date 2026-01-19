@@ -8,6 +8,7 @@ import type {
   ErrorResponse,
   ErrorCode as ErrorCodeType,
 } from '@/types';
+import { logError } from '@/services/logger';
 
 type ApiSession = {
   id: string;
@@ -136,7 +137,7 @@ async function readErrorResponse(response: Response): Promise<ErrorResponse> {
       },
     };
   } catch (e) {
-    console.error('[API] 解析错误响应失败:', e);
+    logError('API', '解析错误响应失败', e);
     return fallback;
   }
 }

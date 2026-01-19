@@ -16,14 +16,10 @@ from interview_system.integrations.api_providers import API_PROVIDERS, APIProvid
 from interview_system.integrations.prompt_builder import PromptBuilder
 from interview_system.integrations.response_parser import ResponseParser
 from interview_system.integrations.prompt_templates import FOLLOWUP_SYSTEM_PROMPT
+from interview_system.common.constants import MAX_FOLLOWUP_TOKENS, TEST_CALL_TOKENS
 
 API_CONFIG_FILE = os.path.join(BASE_DIR, "api_config.json")
 ENV_FILE = os.path.join(BASE_DIR, ".env")
-
-# Token limits
-MAX_FOLLOWUP_TOKENS = 120
-TEST_CALL_TOKENS = 5
-
 
 def _write_text_atomic(path: str, content: str) -> None:
     target = Path(path)

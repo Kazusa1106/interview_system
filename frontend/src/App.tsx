@@ -7,6 +7,7 @@ import { StatsSkeleton } from '@/components/chat/StatsSkeleton';
 import { LazyChatbot, LazyCommandPalette } from '@/lib/lazy';
 import { useInterviewStore, useCommandStore, useThemeStore } from '@/stores';
 import { useStartSession, useSendMessage, useUndo, useSkip, useSessionStats } from '@/hooks';
+import { logError } from '@/services/logger';
 
 function InterviewApp() {
   const { session, messages, isLoading, canUndo } = useInterviewStore();
@@ -39,7 +40,7 @@ function InterviewApp() {
 
       sendMessage.mutate({ sessionId: session.id, text: trimmed });
     } catch (err: unknown) {
-      console.error('[App] 发送消息失败:', err instanceof Error ? err.message : String(err));
+      logError('App', '发送消息失败', err);
     }
   };
 
